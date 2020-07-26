@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Track.Relation
 {
-	public class ObjectTrack
+	public abstract class ObjectTrack
 	{
 		public ObjectTrack()
 		{
@@ -12,5 +12,17 @@ namespace Track.Relation
 		}
 
 		protected KeyProvider KeyProvider { get; } = new KeyProvider();
+
+		public void Offset(int key)
+		{
+			if (key < 0 || KeyProvider.CurrentIndex < key)
+			{
+				throw new ArgumentOutOfRangeException(nameof(key));
+			}
+
+			OffsetData(key);
+		}
+
+		protected abstract void OffsetData(int key);
 	}
 }

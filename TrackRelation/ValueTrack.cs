@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Track.Relation
 {
-	class ValueTrack<TValue>
+	public class ValueTrack<TValue> : ObjectTrack
 	{
 		public ValueTrack()
 			: this(EqualityComparer<TValue>.Default)
@@ -18,7 +18,6 @@ namespace Track.Relation
 		}
 
 		private IEqualityComparer<TValue> EqualityComparer { get; }
-		private KeyProvider KeyProvider { get; } = new KeyProvider();
 		private List<Pair> Values { get; } = new List<Pair>();
 
 		public TValue Value
@@ -35,7 +34,7 @@ namespace Track.Relation
 		}
 		private TValue value;
 
-		public void OffsetToKey(int key)
+		protected override void OffsetData(int key)
 		{
 			if (TryGetPair(key, out var pair))
 			{

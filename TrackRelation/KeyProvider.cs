@@ -4,13 +4,13 @@ using System.Text;
 
 namespace Track.Relation
 {
-	class KeyProvider
+	public class KeyProvider
 	{
-		private int CurrentIndex { get; set; } = 0;
+		public int CurrentIndex { get; private set; } = -1;
 
 		public int GetNewKey()
 		{
-			return CurrentIndex++;
+			return ++CurrentIndex;
 		}
 	}
 }

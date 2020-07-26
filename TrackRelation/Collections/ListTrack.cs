@@ -16,15 +16,7 @@ namespace Track.Relation.Collections
 				throw new ArgumentNullException(nameof(items));
 			}
 
-			if (items.Any())
-			{
-				var key = KeyProvider.GetNewKey();
-				foreach (var item in items)
-				{
-					var lifeData = CreateLifeTime(key, Items.Count, item);
-					Items.Add(lifeData);
-				} 
-			}
+			AddRange(items);
 		}
 		public ListTrack()
 			: this(Enumerable.Empty<T>(), EqualityComparer<T>.Default)
@@ -43,29 +35,21 @@ namespace Track.Relation.Collections
 		}
 
 
-		private List<LifeTime> Items { get; } = new List<LifeTime>();
-		private List<LifeTime> AllItems { get; } = new List<LifeTime>();
+		private List<T> Items { get; } = new List<T>();
+		private List<KeyLife<int, T>> Track { get; } = new List<KeyLife<int, T>>();
 		private IEqualityComparer<T> EqualityComparer { get; }
-
-		private LifeTime CreateLifeTime(int key, int index, T item)
-		{
-			var result = new LifeTime(key, index, item);
-			AllItems.Add(result);
-			return result;
-		}
 
 		public T this[int index]
 		{
-			get => Items[index].Item;
+			get => Items[index];
 			set
 			{
 				var currentValue = Items[index];
-				if (!EqualityComparer.Equals(currentValue.Item, value))
+				if (!EqualityComparer.Equals(currentValue, value))
 				{
 					var key = KeyProvider.GetNewKey();
-					currentValue.Close(key);
-					var newValue = CreateLifeTime(key, index, value);
-					Items[index] = newValue;
+					Items[index] = value;
+					Track[index].SetItem(value, key);
 				}
 			}
 		}
@@ -76,8 +60,27 @@ namespace Track.Relation.Collections
 
 		public void Add(T item)
 		{
-			var lifeTime = CreateLifeTime(KeyProvider.GetNewKey(), Items.Count, item);
-			Items.Add(lifeTime);
+			Add(item, KeyProvider.GetNewKey());
+		}
+		public void AddRange(IEnumerable<T> items)
+		{
+			if (items is null)
+			{
+				throw new ArgumentNullException(nameof(items));
+			}
+			if (items.Any())
+			{
+				var keyTrack = KeyProvider.GetNewKey();
+				foreach (var item in items)
+				{
+					Add(item, keyTrack);
+				}
+			}
+		}
+		private void Add(T item, int keyTrack)
+		{
+			Items.Add(item);
+			Track.Add(new KeyLife<int, T>(Items.Count - 1, item, keyTrack));
 		}
 
 		public void Clear()
@@ -85,7 +88,7 @@ namespace Track.Relation.Collections
 			if (this.Any())
 			{
 				var key = KeyProvider.GetNewKey();
-				foreach (var lifeTime in Items)
+				foreach (var lifeTime in Track)
 				{
 					lifeTime.Close(key);
 				}
@@ -95,64 +98,55 @@ namespace Track.Relation.Collections
 
 		public bool Contains(T item)
 		{
-			return this.AsEnumerable().Contains(item);
+			return Items.Contains(item);
 		}
 
 		public void CopyTo(T[] array, int arrayIndex)
 		{
-			this.ToList().CopyTo(array, arrayIndex);
+			Items.CopyTo(array, arrayIndex);
 		}
 
 		public IEnumerator<T> GetEnumerator()
 		{
-			return Items.Select(item => item.Item).GetEnumerator();
+			return Items.GetEnumerator();
 		}
 
 		public int IndexOf(T item)
 		{
-			for (int i = 0; i < Items.Count; i++)
-			{
-				if (EqualityComparer.Equals(Items[i].Item, item))
-				{
-					return i;
-				}
-			}
-			return -1;
+			return Items.IndexOf(item);
 		}
 
 		public void Insert(int index, T item)
 		{
 			var key = KeyProvider.GetNewKey();
-			var lifeTime = CreateLifeTime(key, index, item);
-			Items.Insert(index, lifeTime);
-			for (int i = index + 1; i < Items.Count; i++)
+			Items.Insert(index, item);
+			for (int i = index; i < Items.Count; i++)
 			{
-				Items[i].SetIndex(key, i);
+				Track[i].SetItem(Items[i], key);
 			}
 		}
 
 		public bool Remove(T item)
 		{
-			for (int i = 0; i < Items.Count; i++)
+			var index = Items.IndexOf(item);
+			if (index >= 0)
 			{
-				if (EqualityComparer.Equals(Items[i].Item, item))
-				{
-					RemoveAt(i);
-					return true;
-				}
+				RemoveAt(index);
+				return true;
 			}
+
 			return false;
 		}
 
 		public void RemoveAt(int index)
 		{
 			var key = KeyProvider.GetNewKey();
-			Items[index].Close(key);
 			Items.RemoveAt(index);
 			for (int i = index; i < Items.Count; i++)
 			{
-				Items[i].SetIndex(key, i);
+				Track[i].SetItem(Items[i], key);
 			}
+			Track[Items.Count].Close(key);
 		}
 
 		IEnumerator IEnumerable.GetEnumerator()
@@ -160,51 +154,19 @@ namespace Track.Relation.Collections
 			return GetEnumerator();
 		}
 
-		private class LifeTime
+		protected override void OffsetData(int key)
 		{
-			public LifeTime(int begin, int index, T item)
+			Items.Clear();
+			foreach (var item in Track)
 			{
-				lifeData.Add(new LifeData(begin, index));
-				Item = item;
-			}
-
-			public IEnumerable<LifeData> LifeData => lifeData;
-			private readonly List<LifeData> lifeData = new List<LifeData>();
-
-			public void SetIndex(int key, int index)
-			{
-				Close(key);
-				lifeData.Add(new LifeData(key, index));
-			}
-			public void Close(int key)
-			{
-				var lastIndex = lifeData.Count - 1;
-				lifeData[lastIndex] = lifeData[lastIndex].SetEnd(key);
-			}
-
-			public T Item { get; }
-		}
-		private struct LifeData
-		{
-			public LifeData(int begin, int? end, int index)
-			{
-				Begin = begin;
-				End = end;
-				Index = index;
-			}
-			public LifeData(int begin, int index)
-				: this(begin, null, index)
-			{
-				
-			}
-
-			public int Begin { get; }
-			public int? End { get; }
-			public int Index { get; }
-
-			public LifeData SetEnd(int end)
-			{
-				return new LifeData(Begin, end, Index);
+				if (item.TryGetValue(key, out var result))
+				{
+					Items.Add(result);
+				}
+				else
+				{
+					return;
+				}
 			}
 		}
 	}
