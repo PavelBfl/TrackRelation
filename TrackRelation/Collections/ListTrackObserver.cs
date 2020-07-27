@@ -33,7 +33,18 @@ namespace Track.Relation.Collections
 
 		protected override void OffsetData(int key)
 		{
-			
+			var result = new List<T>();
+			foreach (var keyLife in Track)
+			{
+				if (keyLife.TryGetValue(key, out var item))
+				{
+					result.Add(item);
+				}
+				else
+				{
+					return;
+				}
+			}
 		}
 	}
 }
