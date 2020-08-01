@@ -8,21 +8,45 @@ namespace Track.Relation
 	{
 		public ObjectTrack()
 		{
-
+			DispatcherTrack = DispatcherTrack.Default;
+		}
+		public ObjectTrack(DispatcherTrack dispatcherTrack)
+		{
+			DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
 		}
 
-		protected KeyProvider KeyProvider { get; } = new KeyProvider();
+		protected DispatcherTrack DispatcherTrack { get; }
 
-		public void Offset(int key)
+		public void Commit()
 		{
-			if (key < 0 || KeyProvider.CurrentIndex < key)
+			using (new AutoKeyBatch(DispatcherTrack))
 			{
-				throw new ArgumentOutOfRangeException(nameof(key));
+				CommitData();
+			}
+		}
+		protected abstract void CommitData();
+		public abstract void Revert();
+		public abstract void Offset(int key);
+
+		private class AutoKeyBatch : IDisposable
+		{
+			public AutoKeyBatch(DispatcherTrack dispatcherTrack)
+			{
+				DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
+
+				if (DispatcherTrack.KeyBatch is null)
+				{
+					LocalKeyBatch = DispatcherTrack.BeginCommit();
+				}
 			}
 
-			OffsetData(key);
-		}
+			private DispatcherTrack DispatcherTrack { get; }
+			private KeyBatch LocalKeyBatch { get; }
 
-		protected abstract void OffsetData(int key);
+			public void Dispose()
+			{
+				LocalKeyBatch?.Dispose();
+			}
+		}
 	}
 }

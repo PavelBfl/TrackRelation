@@ -5,49 +5,57 @@ using System.Text;
 
 namespace Track.Relation
 {
-	public class ValueTrack<TValue> : ObjectTrack
+	public class ValueTrack<TValue>
 	{
 		public ValueTrack()
-			: this(EqualityComparer<TValue>.Default)
 		{
 
 		}
-		public ValueTrack(IEqualityComparer<TValue> equalityComparer)
+		public ValueTrack(TValue value, KeyBatch keyBatch)
 		{
-			EqualityComparer = equalityComparer;
+			SetValue(value, keyBatch);
 		}
 
-		private IEqualityComparer<TValue> EqualityComparer { get; }
-		private List<Pair> Values { get; } = new List<Pair>();
+		private readonly List<RangeTrack<TValue>> track = new List<RangeTrack<TValue>>();
 
-		public TValue Value
+		public bool TrySetValue(TValue value, IEqualityComparer<TValue> comparer, KeyBatch keyBatch)
 		{
-			get => value;
-			set
+			if (comparer is null)
 			{
-				if (!EqualityComparer.Equals(Value, value))
+				throw new ArgumentNullException(nameof(comparer));
+			}
+			if (!TryGetLastValue(out var lastValue) || !comparer.Equals(value, lastValue))
+			{
+				SetValue(value, keyBatch);
+				return true;
+			}
+			return false;
+		}
+		public void SetValue(TValue value, KeyBatch keyBatch)
+		{
+			Close(keyBatch);
+			track.Add(new RangeTrack<TValue>(keyBatch.GetKey(), value));
+		}
+		public void Close(KeyBatch keyBatch)
+		{
+			var lastIndex = track.Count - 1;
+			if (lastIndex >= 0)
+			{
+				var lastRange = track[lastIndex];
+				if (lastRange.End is null)
 				{
-					this.value = value;
-					Values.Add(new Pair(KeyProvider.GetNewKey(), Value));
+					track[lastIndex] = lastRange.Close(keyBatch.GetKey());
 				}
 			}
 		}
-		private TValue value;
 
-		protected override void OffsetData(int key)
+		public bool TryGetValue(int key, out TValue result)
 		{
-			if (TryGetPair(key, out var pair))
+			foreach (var range in track)
 			{
-				value = pair.Value;
-			}
-		}
-		private bool TryGetPair(int key, out Pair result)
-		{
-			foreach (var pair in Values.AsEnumerable().Reverse())
-			{
-				if (pair.Key <= key)
+				if (range.Contains(key))
 				{
-					result = pair;
+					result = range.Value;
 					return true;
 				}
 			}
@@ -55,17 +63,21 @@ namespace Track.Relation
 			result = default;
 			return false;
 		}
-
-		private struct Pair
+		public bool TryGetLastValue(out TValue result)
 		{
-			public Pair(int key, TValue value)
+			var lastIndex = track.Count - 1;
+			if (lastIndex >= 0)
 			{
-				Key = key;
-				Value = value;
+				var lastRange = track[lastIndex];
+				if (lastRange.End is null)
+				{
+					result = lastRange.Value;
+					return true;
+				}
 			}
 
-			public int Key { get; }
-			public TValue Value { get; }
+			result = default;
+			return false;
 		}
 	}
 }

@@ -9,27 +9,19 @@ namespace Track.Relation.Collections
 	public class DictionaryTrack<TKey, TValue> : ObjectTrack, IDictionary<TKey, TValue>
 	{
 		private Dictionary<TKey, TValue> Items { get; } = new Dictionary<TKey, TValue>();
-		private Dictionary<TKey, KeyLife<TKey, TValue>> Track { get; } = new Dictionary<TKey, KeyLife<TKey, TValue>>();
-		private IEqualityComparer<TValue> EqualityComparer { get; }
+		private Dictionary<TKey, ValueTrack<TValue>> Track { get; } = new Dictionary<TKey, ValueTrack<TValue>>();
+		private HashSet<TKey> KeysModified { get; } = new HashSet<TKey>();
+		private IEqualityComparer<TValue> Comparer { get; }
 
 		public TValue this[TKey key]
 		{
 			get => Items[key];
 			set
 			{
-				var item = Items[key];
-				if (!EqualityComparer.Equals(item, value))
+				if (!Items.TryGetValue(key, out var item) || !Comparer.Equals(value, item))
 				{
+					KeysModified.Add(key);
 					Items[key] = value;
-					var keyTrack = KeyProvider.GetNewKey();
-					if (Track.TryGetValue(key, out var keyLife))
-					{
-						keyLife.SetItem(value, keyTrack);
-					}
-					else
-					{
-						Track.Add(key, new KeyLife<TKey, TValue>(key, value, keyTrack));
-					}
 				}
 			}
 		}
@@ -46,8 +38,7 @@ namespace Track.Relation.Collections
 		public void Add(TKey key, TValue value)
 		{
 			Items.Add(key, value);
-			var keyTrack = KeyProvider.GetNewKey();
-			Track.Add(key, new KeyLife<TKey, TValue>(key, value, keyTrack));
+			KeysModified.Add(key);
 		}
 
 		public void Add(KeyValuePair<TKey, TValue> item)
@@ -57,15 +48,11 @@ namespace Track.Relation.Collections
 
 		public void Clear()
 		{
-			if (Items.Any())
+			foreach (var key in Keys)
 			{
-				Items.Clear();
-				var keyTrack = KeyProvider.GetNewKey();
-				foreach (var keyLife in Track.Values)
-				{
-					keyLife.Close(keyTrack);
-				} 
+				KeysModified.Add(key);
 			}
+			Items.Clear();
 		}
 
 		public bool Contains(KeyValuePair<TKey, TValue> item)
@@ -92,8 +79,7 @@ namespace Track.Relation.Collections
 		{
 			if (Items.Remove(key))
 			{
-				var keyTrack = KeyProvider.GetNewKey();
-				Track[key].Close(keyTrack);
+				KeysModified.Add(key);
 				return true;
 			}
 
@@ -115,16 +101,57 @@ namespace Track.Relation.Collections
 			return GetEnumerator();
 		}
 
-		protected override void OffsetData(int key)
+		public void Commit()
+		{
+			if (KeysModified.Any())
+			{
+				foreach (var key in KeysModified)
+				{
+					if (Items.TryGetValue(key, out var item))
+					{
+						if (Track.TryGetValue(key, out var keyTrack))
+						{
+							keyTrack.TrySetValue(item, Comparer, null);
+						}
+						else
+						{
+							Track.Add(key, new ValueTrack<TValue>(item, null));
+						}
+					}
+					else
+					{
+						if (Track.TryGetValue(key, out var keyTrack))
+						{
+							keyTrack.Close(null);
+						}
+					}
+				} 
+			}
+			KeysModified.Clear();
+		}
+		public void Revert()
 		{
 			Items.Clear();
-			foreach (var keyLife in Track.Values)
+			foreach (var pair in Track)
 			{
-				if (keyLife.TryGetValue(key, out var result))
+				if (pair.Value.TryGetLastValue(out var item))
 				{
-					Items.Add(keyLife.Key, result);
+					Items.Add(pair.Key, item);
 				}
 			}
+			KeysModified.Clear();
+		}
+		public void Offset(int key)
+		{
+			Items.Clear();
+			foreach (var pair in Track)
+			{
+				if (pair.Value.TryGetValue(key, out var item))
+				{
+					Items.Add(pair.Key, item);
+				}
+			}
+			KeysModified.Clear();
 		}
 	}
 }
