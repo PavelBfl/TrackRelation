@@ -5,11 +5,11 @@ using System.Text;
 
 namespace Track.Relation
 {
-	public class ValueTrack<TValue>
+	class ValueTrack<TValue>
 	{
 		public ValueTrack()
 		{
-
+			
 		}
 		public ValueTrack(TValue value, KeyBatch keyBatch)
 		{
@@ -34,7 +34,7 @@ namespace Track.Relation
 		public void SetValue(TValue value, KeyBatch keyBatch)
 		{
 			Close(keyBatch);
-			track.Add(new RangeTrack<TValue>(keyBatch.GetKey(), value));
+			track.Add(new RangeTrack<TValue>(keyBatch.Key, value));
 		}
 		public void Close(KeyBatch keyBatch)
 		{
@@ -44,7 +44,7 @@ namespace Track.Relation
 				var lastRange = track[lastIndex];
 				if (lastRange.End is null)
 				{
-					track[lastIndex] = lastRange.Close(keyBatch.GetKey());
+					track[lastIndex] = lastRange.Close(keyBatch.Key);
 				}
 			}
 		}

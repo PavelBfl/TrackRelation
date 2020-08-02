@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Track.Relation.Collections
+namespace Track.Relation.Transact
 {
-	public class DictionaryTrack<TKey, TValue> : ObjectTrack, IDictionary<TKey, TValue>
+	public class DictionaryTransact<TKey, TValue> : ObjectTransact, IDictionary<TKey, TValue>
 	{
 		private Dictionary<TKey, TValue> Items { get; } = new Dictionary<TKey, TValue>();
 		private Dictionary<TKey, ValueTrack<TValue>> Track { get; } = new Dictionary<TKey, ValueTrack<TValue>>();
@@ -18,6 +18,7 @@ namespace Track.Relation.Collections
 			get => Items[key];
 			set
 			{
+				ThrowIfCommitedEnable();
 				if (!Items.TryGetValue(key, out var item) || !Comparer.Equals(value, item))
 				{
 					KeysModified.Add(key);
@@ -37,6 +38,7 @@ namespace Track.Relation.Collections
 
 		public void Add(TKey key, TValue value)
 		{
+			ThrowIfCommitedEnable();
 			Items.Add(key, value);
 			KeysModified.Add(key);
 		}
@@ -48,6 +50,7 @@ namespace Track.Relation.Collections
 
 		public void Clear()
 		{
+			ThrowIfCommitedEnable();
 			foreach (var key in Keys)
 			{
 				KeysModified.Add(key);
@@ -77,6 +80,7 @@ namespace Track.Relation.Collections
 
 		public bool Remove(TKey key)
 		{
+			ThrowIfCommitedEnable();
 			if (Items.Remove(key))
 			{
 				KeysModified.Add(key);
@@ -101,7 +105,7 @@ namespace Track.Relation.Collections
 			return GetEnumerator();
 		}
 
-		public void Commit()
+		protected override void CommitData()
 		{
 			if (KeysModified.Any())
 			{
@@ -111,25 +115,25 @@ namespace Track.Relation.Collections
 					{
 						if (Track.TryGetValue(key, out var keyTrack))
 						{
-							keyTrack.TrySetValue(item, Comparer, null);
+							keyTrack.TrySetValue(item, Comparer, DispatcherTrack.KeyBatch);
 						}
 						else
 						{
-							Track.Add(key, new ValueTrack<TValue>(item, null));
+							Track.Add(key, new ValueTrack<TValue>(item, DispatcherTrack.KeyBatch));
 						}
 					}
 					else
 					{
 						if (Track.TryGetValue(key, out var keyTrack))
 						{
-							keyTrack.Close(null);
+							keyTrack.Close(DispatcherTrack.KeyBatch);
 						}
 					}
-				} 
+				}
+				KeysModified.Clear();
 			}
-			KeysModified.Clear();
 		}
-		public void Revert()
+		protected override void RevertData()
 		{
 			Items.Clear();
 			foreach (var pair in Track)
@@ -141,7 +145,7 @@ namespace Track.Relation.Collections
 			}
 			KeysModified.Clear();
 		}
-		public void Offset(int key)
+		protected override void OffsetData(int key)
 		{
 			Items.Clear();
 			foreach (var pair in Track)
