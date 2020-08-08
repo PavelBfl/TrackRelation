@@ -4,9 +4,9 @@ using System.Text;
 
 namespace Track.Relation
 {
-	public abstract class KeyBatch : IDisposable
+	public abstract class Transaction : IDisposable
 	{
-		internal KeyBatch()
+		internal Transaction()
 		{
 
 		}

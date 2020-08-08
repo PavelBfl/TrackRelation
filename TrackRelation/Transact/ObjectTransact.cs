@@ -39,14 +39,14 @@ namespace Track.Relation.Transact
 
 		protected void ThrowIfCommitedEnable()
 		{
-			if (!(DispatcherTrack.KeyBatch is null))
+			if (!(DispatcherTrack.Transaction is null))
 			{
 				throw new InvalidOperationException();
 			}
 		}
 		protected void ThrowIfCommitedDisable()
 		{
-			if (DispatcherTrack.KeyBatch is null)
+			if (DispatcherTrack.Transaction is null)
 			{
 				throw new InvalidOperationException();
 			}
@@ -58,14 +58,14 @@ namespace Track.Relation.Transact
 			{
 				DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
 
-				if (DispatcherTrack.KeyBatch is null)
+				if (DispatcherTrack.Transaction is null)
 				{
 					LocalKeyBatch = DispatcherTrack.BeginCommit();
 				}
 			}
 
 			private DispatcherTrack DispatcherTrack { get; }
-			private KeyBatch LocalKeyBatch { get; }
+			private Transaction LocalKeyBatch { get; }
 
 			public void Dispose()
 			{

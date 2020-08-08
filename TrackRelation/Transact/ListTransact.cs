@@ -54,6 +54,7 @@ namespace Track.Relation.Transact
 		private List<T> Items { get; } = new List<T>();
 		private List<ValueTrack<T>> Track { get; } = new List<ValueTrack<T>>();
 		private HashSet<int> Indiсes { get; } = new HashSet<int>();
+
 		public IEqualityComparer<T> Comparer { get; }
 
 		public T this[int index]
@@ -173,15 +174,15 @@ namespace Track.Relation.Transact
 					{
 						for (int i = Track.Count; i < Items.Count; i++)
 						{
-							Track.Add(new ValueTrack<T>());
+							Track.Add(new ValueTrack<T>(Comparer));
 						}
-						Track[index].TrySetValue(Items[index], Comparer, DispatcherTrack.KeyBatch);
+						Track[index].SetValue(Items[index], DispatcherTrack.Transaction);
 					}
 					else
 					{
 						if (index < Items.Count)
 						{
-							Track[index].Close(DispatcherTrack.KeyBatch);
+							Track[index].Close(DispatcherTrack.Transaction);
 						}
 					}
 

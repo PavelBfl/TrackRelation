@@ -15,23 +15,23 @@ namespace Track.Relation
 			return ++CurrentIndex;
 		}
 
-		public KeyBatch KeyBatch { get; private set; }
+		public Transaction Transaction { get; private set; }
 
-		public KeyBatch BeginCommit()
+		public Transaction BeginCommit()
 		{
-			if (!(KeyBatch is null))
+			if (!(Transaction is null))
 			{
 				throw new InvalidOperationException();
 			}
-			return new LocalKeyBatch(this);
+			return new LocalTransaction(this);
 		}
 
-		private class LocalKeyBatch : KeyBatch
+		private class LocalTransaction : Transaction
 		{
-			public LocalKeyBatch(DispatcherTrack keyProvider)
+			public LocalTransaction(DispatcherTrack keyProvider)
 			{
 				KeyProvider = keyProvider ?? throw new ArgumentNullException(nameof(keyProvider));
-				KeyProvider.KeyBatch = this;
+				KeyProvider.Transaction = this;
 			}
 
 			public DispatcherTrack KeyProvider { get; }
@@ -48,7 +48,7 @@ namespace Track.Relation
 
 			public override void Dispose()
 			{
-				KeyProvider.KeyBatch = null;
+				KeyProvider.Transaction = null;
 			}
 		}
 	}

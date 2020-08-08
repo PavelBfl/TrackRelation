@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Track.Relation
 {
+	/// <summary>
+	/// Базовый объект трансакции
+	/// </summary>
 	public class ObjectTrack
 	{
 		public ObjectTrack()
@@ -14,7 +17,9 @@ namespace Track.Relation
 		{
 			DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
 		}
-
+		/// <summary>
+		/// Диспетчер отслеживания
+		/// </summary>
 		public DispatcherTrack DispatcherTrack { get; }
 	}
 }

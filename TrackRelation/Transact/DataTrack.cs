@@ -25,7 +25,7 @@ namespace Track.Relation.Transact
 			Value = value;
 		}
 
-		public IEqualityComparer<T> Comparer { get; }
+		public IEqualityComparer<T> Comparer => Track.Comparer;
 		private ValueTrack<T> Track { get; } = new ValueTrack<T>();
 
 		public T Value
@@ -81,11 +81,11 @@ namespace Track.Relation.Transact
 		{
 			if (IsUndefined)
 			{
-				Track.Close(DispatcherTrack.KeyBatch);
+				Track.Close(DispatcherTrack.Transaction);
 			}
 			else
 			{
-				Track.TrySetValue(Value, Comparer, DispatcherTrack.KeyBatch); 
+				Track.SetValue(Value, DispatcherTrack.Transaction); 
 			}
 		}
 	}

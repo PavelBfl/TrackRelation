@@ -11,7 +11,7 @@ namespace Track.Relation.Transact
 		private Dictionary<TKey, TValue> Items { get; } = new Dictionary<TKey, TValue>();
 		private Dictionary<TKey, ValueTrack<TValue>> Track { get; } = new Dictionary<TKey, ValueTrack<TValue>>();
 		private HashSet<TKey> KeysModified { get; } = new HashSet<TKey>();
-		private IEqualityComparer<TValue> Comparer { get; }
+		public IEqualityComparer<TValue> Comparer { get; }
 
 		public TValue this[TKey key]
 		{
@@ -115,18 +115,18 @@ namespace Track.Relation.Transact
 					{
 						if (Track.TryGetValue(key, out var keyTrack))
 						{
-							keyTrack.TrySetValue(item, Comparer, DispatcherTrack.KeyBatch);
+							keyTrack.SetValue(item, DispatcherTrack.Transaction);
 						}
 						else
 						{
-							Track.Add(key, new ValueTrack<TValue>(item, DispatcherTrack.KeyBatch));
+							Track.Add(key, new ValueTrack<TValue>(item, Comparer, DispatcherTrack.Transaction));
 						}
 					}
 					else
 					{
 						if (Track.TryGetValue(key, out var keyTrack))
 						{
-							keyTrack.Close(DispatcherTrack.KeyBatch);
+							keyTrack.Close(DispatcherTrack.Transaction);
 						}
 					}
 				}
