@@ -26,7 +26,6 @@ namespace Track.Relation.Transact
 		public ListTransact(IEnumerable<T> items, IEqualityComparer<T> equalityComparer, DispatcherTrack dispatcherTrack)
 			: base(dispatcherTrack)
 		{
-			Comparer = equalityComparer ?? throw new ArgumentNullException(nameof(equalityComparer));
 			if (items is null)
 			{
 				throw new ArgumentNullException(nameof(items));
@@ -50,12 +49,12 @@ namespace Track.Relation.Transact
 
 		}
 
-
-		private List<T> Items { get; } = new List<T>();
-		private List<ValueTrack<T>> Track { get; } = new List<ValueTrack<T>>();
 		private HashSet<int> Indiсes { get; } = new HashSet<int>();
-
-		public IEqualityComparer<T> Comparer { get; }
+		private ListObserver<T, List<T>> ListObserver { get; } = new ListObserver<T, List<T>>()
+		{
+			List = new List<T>(),
+		};
+		private List<T> Items => ListObserver.List;
 
 		public T this[int index]
 		{
@@ -166,61 +165,16 @@ namespace Track.Relation.Transact
 
 		protected override void CommitData()
 		{
-			if (Indiсes.Any())
-			{
-				foreach (var index in Indiсes)
-				{
-					if (index < Items.Count)
-					{
-						for (int i = Track.Count; i < Items.Count; i++)
-						{
-							Track.Add(new ValueTrack<T>(Comparer));
-						}
-						Track[index].SetValue(Items[index], DispatcherTrack.Transaction);
-					}
-					else
-					{
-						if (index < Items.Count)
-						{
-							Track[index].Close(DispatcherTrack.Transaction);
-						}
-					}
-
-				}
-
-				Indiсes.Clear();
-			}
+			ListObserver.Commit(Indiсes);
 		}
 		protected override void RevertData()
 		{
-			Items.Clear();
-			foreach (var keyTrack in Track)
-			{
-				if (keyTrack.TryGetLastValue(out var item))
-				{
-					Items.Add(item);
-				}
-				else
-				{
-					return;
-				}
-			}
+			ListObserver.Revert();
 			Indiсes.Clear();
 		}
 		protected override void OffsetData(int key)
 		{
-			Items.Clear();
-			foreach (var keyTrack in Track)
-			{
-				if (keyTrack.TryGetValue(key, out var item))
-				{
-					Items.Add(item);
-				}
-				else
-				{
-					return;
-				}
-			}
+			ListObserver.Offset(key);
 			Indiсes.Clear();
 		}
 	}

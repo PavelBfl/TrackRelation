@@ -18,7 +18,7 @@ namespace Track.Relation.Transact
 
 		public void Commit()
 		{
-			using (new AutoKeyBatch(DispatcherTrack))
+			using (new LocalTransaction(DispatcherTrack))
 			{
 				CommitData();
 			}
@@ -49,27 +49,6 @@ namespace Track.Relation.Transact
 			if (DispatcherTrack.Transaction is null)
 			{
 				throw new InvalidOperationException();
-			}
-		}
-
-		private class AutoKeyBatch : IDisposable
-		{
-			public AutoKeyBatch(DispatcherTrack dispatcherTrack)
-			{
-				DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
-
-				if (DispatcherTrack.Transaction is null)
-				{
-					LocalKeyBatch = DispatcherTrack.BeginCommit();
-				}
-			}
-
-			private DispatcherTrack DispatcherTrack { get; }
-			private Transaction LocalKeyBatch { get; }
-
-			public void Dispose()
-			{
-				LocalKeyBatch?.Dispose();
 			}
 		}
 	}

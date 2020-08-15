@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -8,10 +9,14 @@ namespace Track.Relation.Transact
 {
 	public class DictionaryTransact<TKey, TValue> : ObjectTransact, IDictionary<TKey, TValue>
 	{
-		private Dictionary<TKey, TValue> Items { get; } = new Dictionary<TKey, TValue>();
-		private Dictionary<TKey, ValueTrack<TValue>> Track { get; } = new Dictionary<TKey, ValueTrack<TValue>>();
-		private HashSet<TKey> KeysModified { get; } = new HashSet<TKey>();
-		public IEqualityComparer<TValue> Comparer { get; }
+		private DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>> DictionaryObserver { get; } = new DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>>()
+		{
+			Dictionary = new Dictionary<TKey, TValue>(),
+		};
+		private Dictionary<TKey, TValue> Items => DictionaryObserver.Dictionary;
+
+		private HashSet<TKey> Indices { get; } = new HashSet<TKey>();
+
 
 		public TValue this[TKey key]
 		{
@@ -21,7 +26,7 @@ namespace Track.Relation.Transact
 				ThrowIfCommitedEnable();
 				if (!Items.TryGetValue(key, out var item) || !Comparer.Equals(value, item))
 				{
-					KeysModified.Add(key);
+					Indices.Add(key);
 					Items[key] = value;
 				}
 			}
@@ -40,7 +45,7 @@ namespace Track.Relation.Transact
 		{
 			ThrowIfCommitedEnable();
 			Items.Add(key, value);
-			KeysModified.Add(key);
+			Indices.Add(key);
 		}
 
 		public void Add(KeyValuePair<TKey, TValue> item)
@@ -53,7 +58,7 @@ namespace Track.Relation.Transact
 			ThrowIfCommitedEnable();
 			foreach (var key in Keys)
 			{
-				KeysModified.Add(key);
+				Indices.Add(key);
 			}
 			Items.Clear();
 		}
@@ -83,7 +88,7 @@ namespace Track.Relation.Transact
 			ThrowIfCommitedEnable();
 			if (Items.Remove(key))
 			{
-				KeysModified.Add(key);
+				Indices.Add(key);
 				return true;
 			}
 
@@ -107,55 +112,18 @@ namespace Track.Relation.Transact
 
 		protected override void CommitData()
 		{
-			if (KeysModified.Any())
-			{
-				foreach (var key in KeysModified)
-				{
-					if (Items.TryGetValue(key, out var item))
-					{
-						if (Track.TryGetValue(key, out var keyTrack))
-						{
-							keyTrack.SetValue(item, DispatcherTrack.Transaction);
-						}
-						else
-						{
-							Track.Add(key, new ValueTrack<TValue>(item, Comparer, DispatcherTrack.Transaction));
-						}
-					}
-					else
-					{
-						if (Track.TryGetValue(key, out var keyTrack))
-						{
-							keyTrack.Close(DispatcherTrack.Transaction);
-						}
-					}
-				}
-				KeysModified.Clear();
-			}
+			DictionaryObserver.Commit(Indices);
+			Indices.Clear();
 		}
 		protected override void RevertData()
 		{
-			Items.Clear();
-			foreach (var pair in Track)
-			{
-				if (pair.Value.TryGetLastValue(out var item))
-				{
-					Items.Add(pair.Key, item);
-				}
-			}
-			KeysModified.Clear();
+			DictionaryObserver.Revert();
+			Indices.Clear();
 		}
 		protected override void OffsetData(int key)
 		{
-			Items.Clear();
-			foreach (var pair in Track)
-			{
-				if (pair.Value.TryGetValue(key, out var item))
-				{
-					Items.Add(pair.Key, item);
-				}
-			}
-			KeysModified.Clear();
+			DictionaryObserver.Offset(key);
+			Indices.Clear();
 		}
 	}
 }
