@@ -5,14 +5,14 @@ using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
-	public abstract class DataObserverTransact<T> : ObjectTransact
+	public abstract class ValueObserverTransact<T> : ObjectTransact
 	{
-		public DataObserverTransact()
+		public ValueObserverTransact()
 			: this(null)
 		{
 
 		}
-		public DataObserverTransact(IEqualityComparer<T> comparer)
+		public ValueObserverTransact(IEqualityComparer<T> comparer)
 		{
 			Track = new Track<T>(comparer);
 		}

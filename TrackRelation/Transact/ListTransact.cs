@@ -6,15 +6,20 @@ using System.Text;
 
 namespace Track.Relation.Transact
 {
+
+	/// <summary>
+	/// Лист отслеживаемых данных
+	/// </summary>
+	/// <typeparam name="T">Тип эллемента коллекции</typeparam>
 	public class ListTransact<T> : ObjectTransact, IList<T>
 	{
 		public ListTransact(DispatcherTrack dispatcherTrack)
-			: this(Enumerable.Empty<T>(), EqualityComparer<T>.Default, dispatcherTrack)
+			: this(Enumerable.Empty<T>(), default, dispatcherTrack)
 		{
 			
 		}
 		public ListTransact(IEnumerable<T> items, DispatcherTrack dispatcherTrack)
-			: this(items, EqualityComparer<T>.Default, dispatcherTrack)
+			: this(items, default, dispatcherTrack)
 		{
 
 		}
@@ -30,6 +35,7 @@ namespace Track.Relation.Transact
 			{
 				throw new ArgumentNullException(nameof(items));
 			}
+			ListObserver = new ListObserver<T, List<T>>(new List<T>(), equalityComparer);
 
 			AddRange(items);
 		}
@@ -49,11 +55,17 @@ namespace Track.Relation.Transact
 
 		}
 
+		/// <summary>
+		/// Изменёные индексы
+		/// </summary>
 		private HashSet<int> Indiсes { get; } = new HashSet<int>();
-		private ListObserver<T, List<T>> ListObserver { get; } = new ListObserver<T, List<T>>()
-		{
-			List = new List<T>(),
-		};
+		/// <summary>
+		/// Объект наблюдения за коллекцией
+		/// </summary>
+		private ListObserver<T, List<T>> ListObserver { get; }
+		/// <summary>
+		/// Коллекция данных
+		/// </summary>
 		private List<T> Items => ListObserver.List;
 
 		public T this[int index]

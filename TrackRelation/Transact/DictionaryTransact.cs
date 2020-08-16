@@ -7,15 +7,46 @@ using System.Text;
 
 namespace Track.Relation.Transact
 {
+	/// <summary>
+	/// Словарь отслеживаемых данных
+	/// </summary>
+	/// <typeparam name="TKey">Тип ключа</typeparam>
+	/// <typeparam name="TValue">Тип значения</typeparam>
 	public class DictionaryTransact<TKey, TValue> : ObjectTransact, IDictionary<TKey, TValue>
 	{
-		private DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>> DictionaryObserver { get; } = new DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>>()
+		public DictionaryTransact(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
 		{
-			Dictionary = new Dictionary<TKey, TValue>(),
-		};
-		private Dictionary<TKey, TValue> Items => DictionaryObserver.Dictionary;
+			DictionaryObserver = new DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>>(new Dictionary<TKey, TValue>(keyComparer), keyComparer, valueComparer);
+			Indices = new HashSet<TKey>(keyComparer);
+		}
+		public DictionaryTransact(IEqualityComparer<TKey> keyComparer)
+			: this(keyComparer, default)
+		{
 
-		private HashSet<TKey> Indices { get; } = new HashSet<TKey>();
+		}
+		public DictionaryTransact(IEqualityComparer<TValue> valueComparer)
+			: this(default, valueComparer)
+		{
+
+		}
+		public DictionaryTransact()
+			: this(default, default)
+		{
+
+		}
+
+		/// <summary>
+		/// Наблюдатель за изменениями
+		/// </summary>
+		private DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>> DictionaryObserver { get; }
+		/// <summary>
+		/// Словарь данных
+		/// </summary>
+		private Dictionary<TKey, TValue> Items => DictionaryObserver.Dictionary;
+		/// <summary>
+		/// Изменённые индексы
+		/// </summary>
+		private HashSet<TKey> Indices { get; }
 
 
 		public TValue this[TKey key]

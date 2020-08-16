@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Track.Relation
 {
+	/// <summary>
+	/// Транзакция
+	/// </summary>
 	public abstract class Transaction : IDisposable
 	{
 		internal Transaction()
@@ -11,8 +14,14 @@ namespace Track.Relation
 
 		}
 
+		/// <summary>
+		/// Ключ транзакции
+		/// </summary>
 		public abstract int Key { get; }
 
+		/// <summary>
+		/// Завершить работу транзакции
+		/// </summary>
 		public abstract void Dispose();
 	}
 }

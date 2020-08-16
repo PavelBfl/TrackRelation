@@ -5,22 +5,22 @@ using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
-	public class DataTransact<T> : ObjectTransact
+	public class ValueTransact<T> : ObjectTransact
 	{
-		public DataTransact()
+		public ValueTransact()
 		{
 
 		}
-		public DataTransact(DispatcherTrack dispatcherTrack)
+		public ValueTransact(DispatcherTrack dispatcherTrack)
 			: base(dispatcherTrack)
 		{
 
 		}
-		public DataTransact(T value)
+		public ValueTransact(T value)
 		{
 			Value = value;
 		}
-		public DataTransact(T value, DispatcherTrack dispatcherTrack)
+		public ValueTransact(T value, DispatcherTrack dispatcherTrack)
 			: base(dispatcherTrack)
 		{
 			Value = value;

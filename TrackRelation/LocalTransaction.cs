@@ -4,6 +4,9 @@ using System.Text;
 
 namespace Track.Relation
 {
+	/// <summary>
+	/// Локальная транзакция
+	/// </summary>
 	class LocalTransaction : IDisposable
 	{
 		public LocalTransaction(DispatcherTrack dispatcherTrack)

@@ -6,11 +6,49 @@ using Track.Relation.Tracks;
 
 namespace Track.Relation.Tracks
 {
+	/// <summary>
+	/// Трекер словаря
+	/// </summary>
+	/// <typeparam name="TKey">Тип ключа словаря</typeparam>
+	/// <typeparam name="TValue">Тип значения словаря</typeparam>
 	public class DictionaryTrack<TKey, TValue>
 	{
-		private Dictionary<TKey, Track<TValue>> Track { get; } = new Dictionary<TKey, Track<TValue>>();
+		public DictionaryTrack(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
+		{
+			Track = new Dictionary<TKey, Track<TValue>>(keyComparer);
+			Comparer = valueComparer ?? EqualityComparer<TValue>.Default;
+		}
+		public DictionaryTrack(IEqualityComparer<TKey> keyComparer)
+			: this(keyComparer, null)
+		{
+
+		}
+		public DictionaryTrack(IEqualityComparer<TValue> valueComparer)
+			: this(null, valueComparer)
+		{
+
+		}
+		public DictionaryTrack()
+			: this(null, null)
+		{
+
+		}
+
+		/// <summary>
+		/// Базовый трекер
+		/// </summary>
+		private Dictionary<TKey, Track<TValue>> Track { get; }
+		/// <summary>
+		/// Объект сравнения данных
+		/// </summary>
 		public IEqualityComparer<TValue> Comparer { get; }
 
+		/// <summary>
+		/// Зафиксировать данные
+		/// </summary>
+		/// <param name="dictionary">Контейнер данных</param>
+		/// <param name="transaction">Транзакция</param>
+		/// <param name="indices">Фиксируемые индексы, если указан null коминтируются все индексы</param>
 		public void Commit(IDictionary<TKey, TValue> dictionary, Transaction transaction, IEnumerable<TKey> indices = null)
 		{
 			if (dictionary is null)
@@ -45,6 +83,11 @@ namespace Track.Relation.Tracks
 				}
 			}
 		}
+		/// <summary>
+		/// Получить данные ревизии
+		/// </summary>
+		/// <param name="dictionary">Контейнер данных</param>
+		/// <param name="key">Ключ ревизии</param>
 		public void Offset(IDictionary<TKey, TValue> dictionary, int key)
 		{
 			if (dictionary is null)
@@ -61,6 +104,10 @@ namespace Track.Relation.Tracks
 				}
 			}
 		}
+		/// <summary>
+		/// Получить последние данные
+		/// </summary>
+		/// <param name="dictionary">Контейнер данных</param>
 		public void Revert(IDictionary<TKey, TValue> dictionary)
 		{
 			if (dictionary is null)
