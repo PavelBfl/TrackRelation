@@ -3,30 +3,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Track.Relation
+namespace Track.Relation.Tracks
 {
 	/// <summary>
 	/// Поток отслеживания значения
 	/// </summary>
 	/// <typeparam name="TValue">Тип отслеживаемого значения</typeparam>
-	class ValueTrack<TValue>
+	class Track<TValue>
 	{
-		public ValueTrack()
+		public Track()
 			: this(null)
 		{
 			
 		}
-		public ValueTrack(TValue value, Transaction keyBatch)
+		public Track(TValue value, Transaction keyBatch)
 			: this(value, null, keyBatch)
 		{
 			SetValue(value, keyBatch);
 		}
-		public ValueTrack(TValue value, IEqualityComparer<TValue> comparer, Transaction keyBatch)
+		public Track(TValue value, IEqualityComparer<TValue> comparer, Transaction keyBatch)
 			: this(comparer)
 		{
 			SetValue(value, keyBatch);
 		}
-		public ValueTrack(IEqualityComparer<TValue> comparer)
+		public Track(IEqualityComparer<TValue> comparer)
 		{
 			Comparer = comparer ?? EqualityComparer<TValue>.Default;
 		}

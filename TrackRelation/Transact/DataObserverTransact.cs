@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
@@ -13,10 +14,10 @@ namespace Track.Relation.Transact
 		}
 		public DataObserverTransact(IEqualityComparer<T> comparer)
 		{
-			Track = new ValueTrack<T>(comparer);
+			Track = new Track<T>(comparer);
 		}
 
-		private ValueTrack<T> Track { get; }
+		private Track<T> Track { get; }
 
 		protected abstract T GetValue();
 		protected abstract void SetValue(T value);

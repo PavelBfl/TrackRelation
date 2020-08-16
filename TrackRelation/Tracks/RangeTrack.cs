@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Track.Relation
+namespace Track.Relation.Tracks
 {
 	/// <summary>
 	/// Диапазон существования значения

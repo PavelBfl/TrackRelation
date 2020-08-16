@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
@@ -26,7 +27,7 @@ namespace Track.Relation.Transact
 		}
 
 		public IEqualityComparer<T> Comparer => Track.Comparer;
-		private ValueTrack<T> Track { get; } = new ValueTrack<T>();
+		private Track<T> Track { get; } = new Track<T>();
 
 		public T Value
 		{

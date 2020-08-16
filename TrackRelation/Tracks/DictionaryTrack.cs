@@ -2,45 +2,47 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Track.Relation.Tracks;
 
-namespace Track.Relation.Committers
+namespace Track.Relation.Tracks
 {
-	public class DictionaryCommitter<TKey, TValue> : ObjectTrack
+	public class DictionaryTrack<TKey, TValue>
 	{
-		private Dictionary<TKey, ValueTrack<TValue>> Track { get; } = new Dictionary<TKey, ValueTrack<TValue>>();
+		private Dictionary<TKey, Track<TValue>> Track { get; } = new Dictionary<TKey, Track<TValue>>();
 		public IEqualityComparer<TValue> Comparer { get; }
 
-		public void Commit(IDictionary<TKey, TValue> dictionary, IEnumerable<TKey> indices = null)
+		public void Commit(IDictionary<TKey, TValue> dictionary, Transaction transaction, IEnumerable<TKey> indices = null)
 		{
 			if (dictionary is null)
 			{
 				throw new ArgumentNullException(nameof(dictionary));
 			}
-
-			using (new LocalTransaction(DispatcherTrack))
+			if (transaction is null)
 			{
-				indices = indices ?? Track.Keys.ToArray();
-				foreach (var key in indices)
+				throw new ArgumentNullException(nameof(transaction));
+			}
+
+			indices = indices ?? Track.Keys.ToArray();
+			foreach (var key in indices)
+			{
+				if (dictionary.TryGetValue(key, out var item))
 				{
-					if (dictionary.TryGetValue(key, out var item))
+					if (Track.TryGetValue(key, out var keyTrack))
 					{
-						if (Track.TryGetValue(key, out var keyTrack))
-						{
-							keyTrack.SetValue(item, DispatcherTrack.Transaction);
-						}
-						else
-						{
-							Track.Add(key, new ValueTrack<TValue>(item, Comparer, DispatcherTrack.Transaction));
-						}
+						keyTrack.SetValue(item, transaction);
 					}
 					else
 					{
-						if (Track.TryGetValue(key, out var keyTrack))
-						{
-							keyTrack.Close(DispatcherTrack.Transaction);
-						}
+						Track.Add(key, new Track<TValue>(item, Comparer, transaction));
 					}
-				} 
+				}
+				else
+				{
+					if (Track.TryGetValue(key, out var keyTrack))
+					{
+						keyTrack.Close(transaction);
+					}
+				}
 			}
 		}
 		public void Offset(IDictionary<TKey, TValue> dictionary, int key)

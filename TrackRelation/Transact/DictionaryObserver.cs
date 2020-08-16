@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Track.Relation.Committers;
+using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
@@ -10,19 +10,19 @@ namespace Track.Relation.Transact
 		public IEqualityComparer<TValue> Comparer { get; }
 		public TDictionary Dictionary { get; set; }
 
-		private DictionaryCommitter<TKey, TValue> Committer { get; }
+		private DictionaryTrack<TKey, TValue> Committer { get; }
 
 		public void Commit(IEnumerable<TKey> indices)
 		{
 			using (new LocalTransaction(DispatcherTrack))
 			{
-				Committer.Commit(Dictionary, indices);
+				Committer.Commit(Dictionary, DispatcherTrack.Transaction, indices);
 			}
 		}
 
 		protected override void CommitData()
 		{
-			Committer.Commit(Dictionary);
+			Committer.Commit(Dictionary, DispatcherTrack.Transaction);
 		}
 
 		protected override void OffsetData(int key)

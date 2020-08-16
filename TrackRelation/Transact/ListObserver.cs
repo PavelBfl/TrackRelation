@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
@@ -10,19 +11,19 @@ namespace Track.Relation.Transact
 		public IEqualityComparer<TItem> Comparer { get; }
 		public TList List { get; set; }
 
-		private ListCommitter<TItem> Committer { get; }
+		private ListTrack<TItem> Committer { get; }
 
 		public void Commit(IEnumerable<int> indices)
 		{
 			using (new LocalTransaction(DispatcherTrack))
 			{
-				Committer.Commit(List, indices);
+				Committer.Commit(List, DispatcherTrack.Transaction, indices);
 			}
 		}
 
 		protected override void CommitData()
 		{
-			Committer.Commit(List);
+			Committer.Commit(List, DispatcherTrack.Transaction);
 		}
 
 		protected override void OffsetData(int key)
