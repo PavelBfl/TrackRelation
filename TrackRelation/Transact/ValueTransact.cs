@@ -7,27 +7,19 @@ namespace Track.Relation.Transact
 {
 	public class ValueTransact<T> : ObjectTransact
 	{
-		public ValueTransact()
-		{
-
-		}
-		public ValueTransact(DispatcherTrack dispatcherTrack)
-			: base(dispatcherTrack)
-		{
-
-		}
-		public ValueTransact(T value)
+		public ValueTransact(T value, IEqualityComparer<T> comparer = null, DispatcherTrack dispatcher = null)
+			: this(comparer, dispatcher)
 		{
 			Value = value;
 		}
-		public ValueTransact(T value, DispatcherTrack dispatcherTrack)
-			: base(dispatcherTrack)
+		public ValueTransact(IEqualityComparer<T> comparer = null, DispatcherTrack dispatcher = null)
+			: base(dispatcher)
 		{
-			Value = value;
+			Track = new Track<T>(comparer);
 		}
 
 		public IEqualityComparer<T> Comparer => Track.Comparer;
-		private Track<T> Track { get; } = new Track<T>();
+		private Track<T> Track { get; }
 
 		public T Value
 		{
