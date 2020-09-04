@@ -7,60 +7,64 @@ namespace Track.Relation.Tracks
 	/// <summary>
 	/// Диапазон существования значения
 	/// </summary>
-	/// <typeparam name="T">Тип значения</typeparam>
-	struct RangeTrack<T>
+	/// <typeparam name="TValue">Тип значения</typeparam>
+	struct RangeTrack<TKey, TValue>
 	{
-		private RangeTrack(int begin, int? end, T value)
+		public RangeTrack(TKey begin, TValue value)
 		{
-			if (begin >= end)
+			Begin = begin;
+			End = default;
+			Value = value;
+		}
+		public RangeTrack(TKey begin, TKey end, TValue value)
+		{
+			if (Comparer<TKey>.Default.Compare(begin, end) >= 0)
 			{
 				throw new ArgumentOutOfRangeException(nameof(end));
 			}
-
 			Begin = begin;
 			End = end;
 			Value = value;
 		}
-		public RangeTrack(int begin, T value)
-			: this(begin, null, value)
-		{
-			
-		}
-		public RangeTrack(int begin, int end, T value)
-			: this(begin, new int?(end), value)
-		{
-
-		}
 		/// <summary>
 		/// Начало существования значения
 		/// </summary>
-		public int Begin { get; }
+		public TKey Begin { get; }
 		/// <summary>
 		/// Конец существования значения, если null то существование значения не закрыто
 		/// </summary>
-		public int? End { get; }
+		public TKey End { get; }
 		/// <summary>
 		/// Отслеживаемое значение
 		/// </summary>
-		public T Value { get; }
+		public TValue Value { get; }
 
 		/// <summary>
 		/// Проверка вхождения ключа в диапазон
 		/// </summary>
 		/// <param name="key">Провеяемый ключ</param>
 		/// <returns>true если ключ входит в диапазон, иначе false</returns>
-		public bool Contains(int key)
+		public bool Contains(TKey key)
 		{
-			return Begin <= key && key < (End ?? int.MaxValue);
+			var begin = new Comparable<TKey>(Begin);
+			var end = new Comparable<TKey>(End);
+			if (end.IsDefault())
+			{
+				return begin <= key;
+			}
+			else
+			{
+				return begin <= key && key < end;
+			}
 		}
 		/// <summary>
 		/// Создать закрытую копию диапазона
 		/// </summary>
 		/// <param name="end">Ключ на котором необходимо закрыть значение</param>
 		/// <returns>Закрытый диапазон</returns>
-		public RangeTrack<T> Close(int end)
+		public RangeTrack<TKey, TValue> Close(TKey end)
 		{
-			return new RangeTrack<T>(Begin, end, Value);
+			return new RangeTrack<TKey, TValue>(Begin, end, Value);
 		}
 	}
 }

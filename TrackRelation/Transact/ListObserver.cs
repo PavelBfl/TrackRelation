@@ -11,29 +11,14 @@ namespace Track.Relation.Transact
 	/// </summary>
 	/// <typeparam name="TItem">Тип элемента коллекции</typeparam>
 	/// <typeparam name="TList">Тип коллекции</typeparam>
-	public class ListObserver<TItem, TList> : ObjectTransact where TList : IList<TItem>
+	public class ListObserver<TKey, TItem, TList> : ObjectTransact<TKey> where TList : IList<TItem>
 	{
-		public ListObserver(TList list, IEqualityComparer<TItem> comparer)
+		public ListObserver(TList list, IEqualityComparer<TItem> comparer, DispatcherTrack<TKey> dispatcher)
+			: base(dispatcher)
 		{
 			List = list;
-			Track = new ListTrack<TItem>(comparer);
+			Track = new ListTrack<TKey, TItem>(comparer);
 		}
-		public ListObserver(TList list)
-			: this(list, default)
-		{
-
-		}
-		public ListObserver(IEqualityComparer<TItem> comparer)
-			: this(default, comparer)
-		{
-
-		}
-		public ListObserver()
-			: this(default, default)
-		{
-
-		}
-
 
 		/// <summary>
 		/// Объект сравнения данных
@@ -47,7 +32,7 @@ namespace Track.Relation.Transact
 		/// <summary>
 		/// Трекер изменений
 		/// </summary>
-		private ListTrack<TItem> Track { get; }
+		private ListTrack<TKey, TItem> Track { get; }
 
 		/// <summary>
 		/// Зафиксировать данные
@@ -55,7 +40,7 @@ namespace Track.Relation.Transact
 		/// <param name="indices">Фиксируемые индексы</param>
 		public void Commit(IEnumerable<int> indices)
 		{
-			using (new LocalTransaction(DispatcherTrack))
+			using (new LocalTransaction<TKey>(DispatcherTrack))
 			{
 				Track.Commit(List, DispatcherTrack.Transaction, indices);
 			}
@@ -66,7 +51,7 @@ namespace Track.Relation.Transact
 			Track.Commit(List, DispatcherTrack.Transaction);
 		}
 
-		protected override void OffsetData(int key)
+		protected override void OffsetData(TKey key)
 		{
 			Track.Offset(List, key);
 		}

@@ -5,19 +5,19 @@ using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
-	public class ValueObserver<T> : ObjectTransact
+	public class ValueObserver<TKey, TValue> : ObjectTransact<TKey>
 	{
-		public ValueObserver(IValueAccess<T> valueAccess = null, IEqualityComparer<T> comparer = null, DispatcherTrack dispatcher = null)
+		public ValueObserver(IValueAccess<TValue> valueAccess = null, IEqualityComparer<TValue> comparer = null, DispatcherTrack<TKey> dispatcher = null)
 			: base(dispatcher)
 		{
 			ValueAccess = valueAccess;
-			Track = new Track<T>(comparer);
+			Track = new Track<TKey, TValue>(comparer);
 		}
 
-		public IValueAccess<T> ValueAccess { get; set; }
+		public IValueAccess<TValue> ValueAccess { get; set; }
 
-		public IEqualityComparer<T> Comparer => Track.Comparer;
-		private Track<T> Track { get; }
+		public IEqualityComparer<TValue> Comparer => Track.Comparer;
+		private Track<TKey, TValue> Track { get; }
 
 		protected override void CommitData()
 		{
@@ -30,7 +30,7 @@ namespace Track.Relation.Transact
 				ValueAccess.SetValue(result);
 			}
 		}
-		protected override void OffsetData(int key)
+		protected override void OffsetData(TKey key)
 		{
 			if (Track.TryGetValue(key, out var result))
 			{

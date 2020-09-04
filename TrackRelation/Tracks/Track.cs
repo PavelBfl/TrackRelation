@@ -9,22 +9,22 @@ namespace Track.Relation.Tracks
 	/// Поток отслеживания значения
 	/// </summary>
 	/// <typeparam name="TValue">Тип отслеживаемого значения</typeparam>
-	class Track<TValue>
+	class Track<TKey, TValue>
 	{
 		public Track()
 			: this(null)
 		{
 			
 		}
-		public Track(TValue value, Transaction keyBatch)
-			: this(value, null, keyBatch)
+		public Track(TValue value, Transaction<TKey> transaction)
+			: this(value, null, transaction)
 		{
-			SetValue(value, keyBatch);
+			SetValue(value, transaction);
 		}
-		public Track(TValue value, IEqualityComparer<TValue> comparer, Transaction keyBatch)
+		public Track(TValue value, IEqualityComparer<TValue> comparer, Transaction<TKey> transaction)
 			: this(comparer)
 		{
-			SetValue(value, keyBatch);
+			SetValue(value, transaction);
 		}
 		public Track(IEqualityComparer<TValue> comparer)
 		{
@@ -34,7 +34,7 @@ namespace Track.Relation.Tracks
 		/// <summary>
 		/// Список диапазонов изменения значений
 		/// </summary>
-		private readonly List<RangeTrack<TValue>> track = new List<RangeTrack<TValue>>();
+		private readonly List<RangeTrack<TKey, TValue>> track = new List<RangeTrack<TKey, TValue>>();
 		/// <summary>
 		/// Объект сравнения значений
 		/// </summary>
@@ -46,12 +46,12 @@ namespace Track.Relation.Tracks
 		/// <param name="value">Новое значение</param>
 		/// <param name="transaction">Транзакция</param>
 		/// <returns>true если новое значение было сохранено, иначе false</returns>
-		public bool SetValue(TValue value, Transaction transaction)
+		public bool SetValue(TValue value, Transaction<TKey> transaction)
 		{
 			if (!TryGetLastValue(out var lastValue) || !Comparer.Equals(value, lastValue))
 			{
 				Close(transaction);
-				track.Add(new RangeTrack<TValue>(transaction.Key, value));
+				track.Add(new RangeTrack<TKey, TValue>(transaction.Key, value));
 				return true;
 			}
 			return false;
@@ -60,13 +60,13 @@ namespace Track.Relation.Tracks
 		/// Закрыть существование значения
 		/// </summary>
 		/// <param name="transaction">Транзакция</param>
-		public void Close(Transaction transaction)
+		public void Close(Transaction<TKey> transaction)
 		{
 			var lastIndex = track.Count - 1;
 			if (lastIndex >= 0)
 			{
 				var lastRange = track[lastIndex];
-				if (lastRange.End is null)
+				if (new Comparable<TKey>(lastRange.End).IsDefault())
 				{
 					track[lastIndex] = lastRange.Close(transaction.Key);
 				}
@@ -79,7 +79,7 @@ namespace Track.Relation.Tracks
 		/// <param name="key">Ключ значения</param>
 		/// <param name="result">Результирующее значение</param>
 		/// <returns>true если значение удалось найти, наче false</returns>
-		public bool TryGetValue(int key, out TValue result)
+		public bool TryGetValue(TKey key, out TValue result)
 		{
 			foreach (var range in track)
 			{
@@ -104,7 +104,7 @@ namespace Track.Relation.Tracks
 			if (lastIndex >= 0)
 			{
 				var lastRange = track[lastIndex];
-				if (lastRange.End is null)
+				if (new Comparable<TKey>(lastRange.End).IsDefault())
 				{
 					result = lastRange.Value;
 					return true;

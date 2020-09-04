@@ -7,37 +7,56 @@ namespace Track.Relation
 	/// <summary>
 	/// Диспетчер отслеживания данных
 	/// </summary>
-	public class DispatcherTrack
+	public class DispatcherTrack<T>
 	{
-		/// <summary>
-		/// Диспетчер по умолчанию
-		/// </summary>
-		public static DispatcherTrack Default { get; } = new DispatcherTrack();
-
-		/// <summary>
-		/// Текущий индекс ревизии
-		/// </summary>
-		public int CurrentIndex { get; private set; } = -1;
-
-		/// <summary>
-		/// Получить новое значение идентификатора ревизии
-		/// </summary>
-		/// <returns>Идентификатор ревизии</returns>
-		public int GetNewKey()
+		
+		public DispatcherTrack(ICommitKeyProvider<T> commitKeyProvider)
 		{
-			return ++CurrentIndex;
+			CommitKeyProvider = commitKeyProvider ?? throw new ArgumentNullException(nameof(commitKeyProvider));
+		}
+
+		/// <summary>
+		/// Поставщик лючей фиксации
+		/// </summary>
+		public ICommitKeyProvider<T> CommitKeyProvider { get; }
+		/// <summary>
+		/// Последний ключ фиксации данных
+		/// </summary>
+		public T LastCommitKey { get; private set; } = default;
+
+		/// <summary>
+		/// Сформировать новый ключ фиксации
+		/// </summary>
+		/// <returns>Ключ фиксации</returns>
+		private T CreateCommitKey()
+		{
+			var lastCommitKey = new Comparable<T>(LastCommitKey);
+			if (!lastCommitKey.IsDefault())
+			{
+				var newCommitKey = CommitKeyProvider.CreateKey();
+				if (lastCommitKey >= newCommitKey)
+				{
+					throw new InvalidOperationException();
+				}
+				LastCommitKey = newCommitKey;
+			}
+			else
+			{
+				LastCommitKey = CommitKeyProvider.CreateKey();
+			}
+			return LastCommitKey;
 		}
 
 		/// <summary>
 		/// Текущая транзакция
 		/// </summary>
-		public Transaction Transaction { get; private set; }
+		public Transaction<T> Transaction { get; private set; }
 
 		/// <summary>
 		/// Запустить транзакцию
 		/// </summary>
 		/// <returns>Транзакция</returns>
-		public Transaction BeginCommit()
+		public Transaction<T> BeginCommit()
 		{
 			if (!(Transaction is null))
 			{
@@ -47,29 +66,32 @@ namespace Track.Relation
 		}
 
 
-		private class LocalTransaction : Transaction
+		private class LocalTransaction : Transaction<T>
 		{
-			public LocalTransaction(DispatcherTrack keyProvider)
+			public LocalTransaction(DispatcherTrack<T> dispatcher)
 			{
-				KeyProvider = keyProvider ?? throw new ArgumentNullException(nameof(keyProvider));
-				KeyProvider.Transaction = this;
+				Dispatcher = dispatcher ?? throw new ArgumentNullException(nameof(dispatcher));
+				Dispatcher.Transaction = this;
 			}
 
-			public DispatcherTrack KeyProvider { get; }
+			public DispatcherTrack<T> Dispatcher { get; }
 
-			public override int Key
+			public override T Key
 			{
 				get
 				{
-					key = key ?? KeyProvider.GetNewKey();
-					return key.Value;
+					if (new Comparable<T>(key).IsDefault())
+					{
+						key = Dispatcher.CreateCommitKey();
+					}
+					return key;
 				}
 			}
-			private int? key = null;
+			private T key = default;
 
 			public override void Dispose()
 			{
-				KeyProvider.Transaction = null;
+				Dispatcher.Transaction = null;
 			}
 		}
 	}

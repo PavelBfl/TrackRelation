@@ -5,23 +5,23 @@ using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
-	public class ValueTransact<T> : ObjectTransact
+	public class ValueTransact<TKey, TValue> : ObjectTransact<TKey>
 	{
-		public ValueTransact(T value, IEqualityComparer<T> comparer = null, DispatcherTrack dispatcher = null)
+		public ValueTransact(TValue value, IEqualityComparer<TValue> comparer = null, DispatcherTrack<TKey> dispatcher = null)
 			: this(comparer, dispatcher)
 		{
 			Value = value;
 		}
-		public ValueTransact(IEqualityComparer<T> comparer = null, DispatcherTrack dispatcher = null)
+		public ValueTransact(IEqualityComparer<TValue> comparer = null, DispatcherTrack<TKey> dispatcher = null)
 			: base(dispatcher)
 		{
-			Track = new Track<T>(comparer);
+			Track = new Track<TKey, TValue>(comparer);
 		}
 
-		public IEqualityComparer<T> Comparer => Track.Comparer;
-		private Track<T> Track { get; }
+		public IEqualityComparer<TValue> Comparer => Track.Comparer;
+		private Track<TKey, TValue> Track { get; }
 
-		public T Value
+		public TValue Value
 		{
 			get
 			{
@@ -38,7 +38,7 @@ namespace Track.Relation.Transact
 				IsUndefined = false;
 			}
 		}
-		private T value;
+		private TValue value;
 
 		public bool IsUndefined { get; private set; } = true;
 		public void Close()
@@ -46,7 +46,7 @@ namespace Track.Relation.Transact
 			IsUndefined = true;
 		}
 
-		protected override void OffsetData(int key)
+		protected override void OffsetData(TKey key)
 		{
 			if (Track.TryGetValue(key, out var value))
 			{

@@ -10,49 +10,19 @@ namespace Track.Relation.Transact
 	/// <summary>
 	/// Лист отслеживаемых данных
 	/// </summary>
-	/// <typeparam name="T">Тип эллемента коллекции</typeparam>
-	public class ListTransact<T> : ObjectTransact, IList<T>
+	/// <typeparam name="TValue">Тип эллемента коллекции</typeparam>
+	public class ListTransact<TKey, TValue> : ObjectTransact<TKey>, IList<TValue>
 	{
-		public ListTransact(DispatcherTrack dispatcherTrack)
-			: this(Enumerable.Empty<T>(), default, dispatcherTrack)
-		{
-			
-		}
-		public ListTransact(IEnumerable<T> items, DispatcherTrack dispatcherTrack)
-			: this(items, default, dispatcherTrack)
-		{
-
-		}
-		public ListTransact(IEqualityComparer<T> equalityComparer, DispatcherTrack dispatcherTrack)
-			: this(Enumerable.Empty<T>(), equalityComparer, dispatcherTrack)
-		{
-
-		}
-		public ListTransact(IEnumerable<T> items, IEqualityComparer<T> equalityComparer, DispatcherTrack dispatcherTrack)
-			: base(dispatcherTrack)
+		public ListTransact(IEnumerable<TValue> items, IEqualityComparer<TValue> equalityComparer, DispatcherTrack<TKey> dispatcher)
+			: base(dispatcher)
 		{
 			if (items is null)
 			{
 				throw new ArgumentNullException(nameof(items));
 			}
-			ListObserver = new ListObserver<T, List<T>>(new List<T>(), equalityComparer);
+			ListObserver = new ListObserver<TKey, TValue, List<TValue>>(new List<TValue>(), equalityComparer, dispatcher);
 
 			AddRange(items);
-		}
-		public ListTransact()
-			: this(Enumerable.Empty<T>(), EqualityComparer<T>.Default, DispatcherTrack.Default)
-		{
-
-		}
-		public ListTransact(IEnumerable<T> items)
-			: this (items, EqualityComparer<T>.Default, DispatcherTrack.Default)
-		{
-
-		}
-		public ListTransact(IEqualityComparer<T> equalityComparer)
-			: this(Enumerable.Empty<T>(), equalityComparer, DispatcherTrack.Default)
-		{
-
 		}
 
 		/// <summary>
@@ -62,13 +32,13 @@ namespace Track.Relation.Transact
 		/// <summary>
 		/// Объект наблюдения за коллекцией
 		/// </summary>
-		private ListObserver<T, List<T>> ListObserver { get; }
+		private ListObserver<TKey, TValue, List<TValue>> ListObserver { get; }
 		/// <summary>
 		/// Коллекция данных
 		/// </summary>
-		private List<T> Items => ListObserver.List;
+		private List<TValue> Items => ListObserver.List;
 
-		public T this[int index]
+		public TValue this[int index]
 		{
 			get => Items[index];
 			set
@@ -87,13 +57,13 @@ namespace Track.Relation.Transact
 
 		public bool IsReadOnly => false;
 
-		public void Add(T item)
+		public void Add(TValue item)
 		{
 			ThrowIfCommitedEnable();
 			Items.Add(item);
 			Indiсes.Add(Items.Count - 1);
 		}
-		public void AddRange(IEnumerable<T> items)
+		public void AddRange(IEnumerable<TValue> items)
 		{
 			ThrowIfCommitedEnable();
 			if (items is null)
@@ -118,27 +88,27 @@ namespace Track.Relation.Transact
 			Items.Clear();
 		}
 
-		public bool Contains(T item)
+		public bool Contains(TValue item)
 		{
 			return Items.Contains(item);
 		}
 
-		public void CopyTo(T[] array, int arrayIndex)
+		public void CopyTo(TValue[] array, int arrayIndex)
 		{
 			Items.CopyTo(array, arrayIndex);
 		}
 
-		public IEnumerator<T> GetEnumerator()
+		public IEnumerator<TValue> GetEnumerator()
 		{
 			return Items.GetEnumerator();
 		}
 
-		public int IndexOf(T item)
+		public int IndexOf(TValue item)
 		{
 			return Items.IndexOf(item);
 		}
 
-		public void Insert(int index, T item)
+		public void Insert(int index, TValue item)
 		{
 			Items.Insert(index, item);
 			for (int i = index; i < Items.Count; i++)
@@ -147,7 +117,7 @@ namespace Track.Relation.Transact
 			}
 		}
 
-		public bool Remove(T item)
+		public bool Remove(TValue item)
 		{
 			ThrowIfCommitedEnable();
 			var index = Items.IndexOf(item);
@@ -184,7 +154,7 @@ namespace Track.Relation.Transact
 			ListObserver.Revert();
 			Indiсes.Clear();
 		}
-		protected override void OffsetData(int key)
+		protected override void OffsetData(TKey key)
 		{
 			ListObserver.Offset(key);
 			Indiсes.Clear();

@@ -8,28 +8,28 @@ namespace Track.Relation.Tracks
 	/// <summary>
 	/// Трекер листа
 	/// </summary>
-	/// <typeparam name="T"></typeparam>
-	public class ListTrack<T>
+	/// <typeparam name="TValue"></typeparam>
+	public class ListTrack<TKey, TValue>
 	{
 		public ListTrack()
 			: this(null)
 		{
 
 		}
-		public ListTrack(IEqualityComparer<T> comparer)
+		public ListTrack(IEqualityComparer<TValue> comparer)
 		{
-			Comparer = comparer ?? EqualityComparer<T>.Default;
+			Comparer = comparer ?? EqualityComparer<TValue>.Default;
 		}
 
 		/// <summary>
 		/// Объект сравнения данных
 		/// </summary>
-		public IEqualityComparer<T> Comparer { get; }
+		public IEqualityComparer<TValue> Comparer { get; }
 
 		/// <summary>
 		/// Базовый элемент отслеживания данных
 		/// </summary>
-		private List<Track<T>> Track { get; } = new List<Track<T>>();
+		private List<Track<TKey, TValue>> Track { get; } = new List<Track<TKey, TValue>>();
 
 		/// <summary>
 		/// Зафиксировать данные
@@ -37,7 +37,7 @@ namespace Track.Relation.Tracks
 		/// <param name="list">Список данных</param>
 		/// <param name="transaction">Транзакция</param>
 		/// <param name="indices">Фиксируемые индексы, если установлено null фиксируются все индексы</param>
-		public void Commit(IList<T> list, Transaction transaction, IEnumerable<int> indices = null)
+		public void Commit(IList<TValue> list, Transaction<TKey> transaction, IEnumerable<int> indices = null)
 		{
 			if (list is null)
 			{
@@ -55,7 +55,7 @@ namespace Track.Relation.Tracks
 				{
 					for (int i = Track.Count; i < list.Count; i++)
 					{
-						Track.Add(new Track<T>(Comparer));
+						Track.Add(new Track<TKey, TValue>(Comparer));
 					}
 					Track[index].SetValue(list[index], transaction);
 				}
@@ -74,7 +74,7 @@ namespace Track.Relation.Tracks
 		/// </summary>
 		/// <param name="list">Контейнер данных</param>
 		/// <param name="key">Ключ ревизии</param>
-		public void Offset(IList<T> list, int key)
+		public void Offset(IList<TValue> list, TKey key)
 		{
 			if (list is null)
 			{
@@ -98,7 +98,7 @@ namespace Track.Relation.Tracks
 		/// Отменить изменения до последней ревизии
 		/// </summary>
 		/// <param name="list">Контейнер данных</param>
-		public void Revert(IList<T> list)
+		public void Revert(IList<TValue> list)
 		{
 			if (list is null)
 			{

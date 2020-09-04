@@ -7,13 +7,9 @@ namespace Track.Relation.Transact
 	/// <summary>
 	/// Объект потдержки транзакций
 	/// </summary>
-	public abstract class ObjectTransact : ObjectTrack
+	public abstract class ObjectTransact<TKey> : ObjectTrack<TKey>
 	{
-		public ObjectTransact()
-		{
-
-		}
-		public ObjectTransact(DispatcherTrack dispatcherTrack)
+		public ObjectTransact(DispatcherTrack<TKey> dispatcherTrack)
 			: base(dispatcherTrack)
 		{
 
@@ -24,7 +20,7 @@ namespace Track.Relation.Transact
 		/// </summary>
 		public void Commit()
 		{
-			using (new LocalTransaction(DispatcherTrack))
+			using (new LocalTransaction<TKey>(DispatcherTrack))
 			{
 				CommitData();
 			}
@@ -49,7 +45,7 @@ namespace Track.Relation.Transact
 		/// Сместить данные до ревизии
 		/// </summary>
 		/// <param name="key">Ключ ревизии</param>
-		public void Offset(int key)
+		public void Offset(TKey key)
 		{
 			ThrowIfCommitedEnable();
 			OffsetData(key);
@@ -58,7 +54,7 @@ namespace Track.Relation.Transact
 		/// Сместить внутриние данные до ревизии
 		/// </summary>
 		/// <param name="key">Ключ ревизии</param>
-		protected abstract void OffsetData(int key);
+		protected abstract void OffsetData(TKey key);
 
 		/// <summary>
 		/// Вызвать исключение если производится фиксация данных

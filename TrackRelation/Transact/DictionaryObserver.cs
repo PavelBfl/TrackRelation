@@ -11,32 +11,13 @@ namespace Track.Relation.Transact
 	/// <typeparam name="TKey">Тип ключа словаря</typeparam>
 	/// <typeparam name="TValue">Тип значения словаря</typeparam>
 	/// <typeparam name="TDictionary">Тип словаря</typeparam>
-	public class DictionaryObserver<TKey, TValue, TDictionary> : ObjectTransact where TDictionary : IDictionary<TKey, TValue>
+	public class DictionaryObserver<TCommitKey, TKey, TValue, TDictionary> : ObjectTransact<TCommitKey> where TDictionary : IDictionary<TKey, TValue>
 	{
-		public DictionaryObserver(TDictionary dictionary, IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
+		public DictionaryObserver(TDictionary dictionary, IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer, DispatcherTrack<TCommitKey> dispatcher)
+			: base(dispatcher)
 		{
 			Dictionary = dictionary;
-			Track = new DictionaryTrack<TKey, TValue>(keyComparer, valueComparer);
-		}
-		public DictionaryObserver(TDictionary dictionary, IEqualityComparer<TKey> keyComparer)
-			: this(dictionary, keyComparer, default)
-		{
-
-		}
-		public DictionaryObserver(TDictionary dictionary)
-			: this(dictionary, default, default)
-		{
-
-		}
-		public DictionaryObserver(IEqualityComparer<TValue> valueComparer)
-			: this(default, default, valueComparer)
-		{
-
-		}
-		public DictionaryObserver()
-			: this(default, default, default)
-		{
-
+			Track = new DictionaryTrack<TCommitKey, TKey, TValue>(keyComparer, valueComparer);
 		}
 
 		/// <summary>
@@ -51,7 +32,7 @@ namespace Track.Relation.Transact
 		/// <summary>
 		/// Объект отслеживания изменений
 		/// </summary>
-		private DictionaryTrack<TKey, TValue> Track { get; }
+		private DictionaryTrack<TCommitKey, TKey, TValue> Track { get; }
 
 		/// <summary>
 		/// Зафиксировать данные
@@ -59,7 +40,7 @@ namespace Track.Relation.Transact
 		/// <param name="indices">Фиксируемые индексы</param>
 		public void Commit(IEnumerable<TKey> indices)
 		{
-			using (new LocalTransaction(DispatcherTrack))
+			using (new LocalTransaction<TCommitKey>(DispatcherTrack))
 			{
 				Track.Commit(Dictionary, DispatcherTrack.Transaction, indices);
 			}
@@ -70,7 +51,7 @@ namespace Track.Relation.Transact
 			Track.Commit(Dictionary, DispatcherTrack.Transaction);
 		}
 
-		protected override void OffsetData(int key)
+		protected override void OffsetData(TCommitKey key)
 		{
 			Track.Offset(Dictionary, key);
 		}

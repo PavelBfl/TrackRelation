@@ -7,19 +7,15 @@ namespace Track.Relation
 	/// <summary>
 	/// Базовый объект трансакции
 	/// </summary>
-	public class ObjectTrack
+	public class ObjectTrack<TKey>
 	{
-		public ObjectTrack()
-		{
-			DispatcherTrack = DispatcherTrack.Default;
-		}
-		public ObjectTrack(DispatcherTrack dispatcherTrack)
+		public ObjectTrack(DispatcherTrack<TKey> dispatcherTrack)
 		{
 			DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
 		}
 		/// <summary>
 		/// Диспетчер отслеживания
 		/// </summary>
-		public DispatcherTrack DispatcherTrack { get; }
+		public DispatcherTrack<TKey> DispatcherTrack { get; }
 	}
 }

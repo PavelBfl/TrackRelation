@@ -11,11 +11,11 @@ namespace Track.Relation.Tracks
 	/// </summary>
 	/// <typeparam name="TKey">Тип ключа словаря</typeparam>
 	/// <typeparam name="TValue">Тип значения словаря</typeparam>
-	public class DictionaryTrack<TKey, TValue>
+	public class DictionaryTrack<TCommitKey, TKey, TValue>
 	{
 		public DictionaryTrack(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
 		{
-			Track = new Dictionary<TKey, Track<TValue>>(keyComparer);
+			Track = new Dictionary<TKey, Track<TCommitKey, TValue>>(keyComparer);
 			Comparer = valueComparer ?? EqualityComparer<TValue>.Default;
 		}
 		public DictionaryTrack(IEqualityComparer<TKey> keyComparer)
@@ -37,7 +37,7 @@ namespace Track.Relation.Tracks
 		/// <summary>
 		/// Базовый трекер
 		/// </summary>
-		private Dictionary<TKey, Track<TValue>> Track { get; }
+		private Dictionary<TKey, Track<TCommitKey, TValue>> Track { get; }
 		/// <summary>
 		/// Объект сравнения данных
 		/// </summary>
@@ -49,7 +49,7 @@ namespace Track.Relation.Tracks
 		/// <param name="dictionary">Контейнер данных</param>
 		/// <param name="transaction">Транзакция</param>
 		/// <param name="indices">Фиксируемые индексы, если указан null коминтируются все индексы</param>
-		public void Commit(IDictionary<TKey, TValue> dictionary, Transaction transaction, IEnumerable<TKey> indices = null)
+		public void Commit(IDictionary<TKey, TValue> dictionary, Transaction<TCommitKey> transaction, IEnumerable<TKey> indices = null)
 		{
 			if (dictionary is null)
 			{
@@ -71,7 +71,7 @@ namespace Track.Relation.Tracks
 					}
 					else
 					{
-						Track.Add(key, new Track<TValue>(item, Comparer, transaction));
+						Track.Add(key, new Track<TCommitKey, TValue>(item, Comparer, transaction));
 					}
 				}
 				else
@@ -88,7 +88,7 @@ namespace Track.Relation.Tracks
 		/// </summary>
 		/// <param name="dictionary">Контейнер данных</param>
 		/// <param name="key">Ключ ревизии</param>
-		public void Offset(IDictionary<TKey, TValue> dictionary, int key)
+		public void Offset(IDictionary<TKey, TValue> dictionary, TCommitKey key)
 		{
 			if (dictionary is null)
 			{

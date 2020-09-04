@@ -12,33 +12,19 @@ namespace Track.Relation.Transact
 	/// </summary>
 	/// <typeparam name="TKey">Тип ключа</typeparam>
 	/// <typeparam name="TValue">Тип значения</typeparam>
-	public class DictionaryTransact<TKey, TValue> : ObjectTransact, IDictionary<TKey, TValue>
+	public class DictionaryTransact<TCommitKey, TKey, TValue> : ObjectTransact<TCommitKey>, IDictionary<TKey, TValue>
 	{
-		public DictionaryTransact(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
+		public DictionaryTransact(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer, DispatcherTrack<TCommitKey> dispatcher)
+			: base(dispatcher)
 		{
-			DictionaryObserver = new DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>>(new Dictionary<TKey, TValue>(keyComparer), keyComparer, valueComparer);
+			DictionaryObserver = new DictionaryObserver<TCommitKey, TKey, TValue, Dictionary<TKey, TValue>>(new Dictionary<TKey, TValue>(keyComparer), keyComparer, valueComparer, dispatcher);
 			Indices = new HashSet<TKey>(keyComparer);
-		}
-		public DictionaryTransact(IEqualityComparer<TKey> keyComparer)
-			: this(keyComparer, default)
-		{
-
-		}
-		public DictionaryTransact(IEqualityComparer<TValue> valueComparer)
-			: this(default, valueComparer)
-		{
-
-		}
-		public DictionaryTransact()
-			: this(default, default)
-		{
-
 		}
 
 		/// <summary>
 		/// Наблюдатель за изменениями
 		/// </summary>
-		private DictionaryObserver<TKey, TValue, Dictionary<TKey, TValue>> DictionaryObserver { get; }
+		private DictionaryObserver<TCommitKey, TKey, TValue, Dictionary<TKey, TValue>> DictionaryObserver { get; }
 		/// <summary>
 		/// Словарь данных
 		/// </summary>
@@ -151,7 +137,7 @@ namespace Track.Relation.Transact
 			DictionaryObserver.Revert();
 			Indices.Clear();
 		}
-		protected override void OffsetData(int key)
+		protected override void OffsetData(TCommitKey key)
 		{
 			DictionaryObserver.Offset(key);
 			Indices.Clear();

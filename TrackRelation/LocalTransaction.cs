@@ -7,9 +7,9 @@ namespace Track.Relation
 	/// <summary>
 	/// Локальная транзакция
 	/// </summary>
-	class LocalTransaction : IDisposable
+	class LocalTransaction<TKey> : IDisposable
 	{
-		public LocalTransaction(DispatcherTrack dispatcherTrack)
+		public LocalTransaction(DispatcherTrack<TKey> dispatcherTrack)
 		{
 			DispatcherTrack = dispatcherTrack ?? throw new ArgumentNullException(nameof(dispatcherTrack));
 
@@ -19,8 +19,8 @@ namespace Track.Relation
 			}
 		}
 
-		private DispatcherTrack DispatcherTrack { get; }
-		private Transaction Transaction { get; }
+		private DispatcherTrack<TKey> DispatcherTrack { get; }
+		private Transaction<TKey> Transaction { get; }
 
 		public void Dispose()
 		{
