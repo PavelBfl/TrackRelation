@@ -14,10 +14,9 @@ namespace Track.Relation.Transact
 	/// <typeparam name="TValue">Тип значения</typeparam>
 	public class DictionaryTransact<TCommitKey, TKey, TValue> : ObjectTransact<TCommitKey>, IDictionary<TKey, TValue>
 	{
-		public DictionaryTransact(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer, DispatcherTrack<TCommitKey> dispatcher)
-			: base(dispatcher)
+		public DictionaryTransact(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
 		{
-			DictionaryObserver = new DictionaryObserver<TCommitKey, TKey, TValue, Dictionary<TKey, TValue>>(new Dictionary<TKey, TValue>(keyComparer), keyComparer, valueComparer, dispatcher);
+			DictionaryObserver = new DictionaryObserver<TCommitKey, TKey, TValue, Dictionary<TKey, TValue>>(new Dictionary<TKey, TValue>(keyComparer), keyComparer, valueComparer);
 			Indices = new HashSet<TKey>(keyComparer);
 		}
 
@@ -40,7 +39,6 @@ namespace Track.Relation.Transact
 			get => Items[key];
 			set
 			{
-				ThrowIfCommitedEnable();
 				if (!Items.TryGetValue(key, out var item) || !Comparer.Equals(value, item))
 				{
 					Indices.Add(key);
@@ -60,7 +58,6 @@ namespace Track.Relation.Transact
 
 		public void Add(TKey key, TValue value)
 		{
-			ThrowIfCommitedEnable();
 			Items.Add(key, value);
 			Indices.Add(key);
 		}
@@ -72,7 +69,6 @@ namespace Track.Relation.Transact
 
 		public void Clear()
 		{
-			ThrowIfCommitedEnable();
 			foreach (var key in Keys)
 			{
 				Indices.Add(key);
@@ -102,7 +98,6 @@ namespace Track.Relation.Transact
 
 		public bool Remove(TKey key)
 		{
-			ThrowIfCommitedEnable();
 			if (Items.Remove(key))
 			{
 				Indices.Add(key);
@@ -127,17 +122,17 @@ namespace Track.Relation.Transact
 			return GetEnumerator();
 		}
 
-		protected override void CommitData()
+		public override void Commit(Transaction<TCommitKey> transaction)
 		{
-			DictionaryObserver.Commit(Indices);
+			DictionaryObserver.Commit(Indices, transaction);
 			Indices.Clear();
 		}
-		protected override void RevertData()
+		public override void Revert()
 		{
 			DictionaryObserver.Revert();
 			Indices.Clear();
 		}
-		protected override void OffsetData(TCommitKey key)
+		public override void Offset(TCommitKey key)
 		{
 			DictionaryObserver.Offset(key);
 			Indices.Clear();

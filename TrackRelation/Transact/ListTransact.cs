@@ -13,14 +13,13 @@ namespace Track.Relation.Transact
 	/// <typeparam name="TValue">Тип эллемента коллекции</typeparam>
 	public class ListTransact<TKey, TValue> : ObjectTransact<TKey>, IList<TValue>
 	{
-		public ListTransact(IEnumerable<TValue> items, IEqualityComparer<TValue> equalityComparer, DispatcherTrack<TKey> dispatcher)
-			: base(dispatcher)
+		public ListTransact(IEnumerable<TValue> items, IEqualityComparer<TValue> equalityComparer)
 		{
 			if (items is null)
 			{
 				throw new ArgumentNullException(nameof(items));
 			}
-			ListObserver = new ListObserver<TKey, TValue, List<TValue>>(new List<TValue>(), equalityComparer, dispatcher);
+			ListObserver = new ListObserver<TKey, TValue, List<TValue>>(new List<TValue>(), equalityComparer);
 
 			AddRange(items);
 		}
@@ -43,7 +42,6 @@ namespace Track.Relation.Transact
 			get => Items[index];
 			set
 			{
-				ThrowIfCommitedEnable();
 				var item = Items[index];
 				if (Comparer.Equals(item, value))
 				{
@@ -59,13 +57,11 @@ namespace Track.Relation.Transact
 
 		public void Add(TValue item)
 		{
-			ThrowIfCommitedEnable();
 			Items.Add(item);
 			Indiсes.Add(Items.Count - 1);
 		}
 		public void AddRange(IEnumerable<TValue> items)
 		{
-			ThrowIfCommitedEnable();
 			if (items is null)
 			{
 				throw new ArgumentNullException(nameof(items));
@@ -80,7 +76,6 @@ namespace Track.Relation.Transact
 
 		public void Clear()
 		{
-			ThrowIfCommitedEnable();
 			for (int i = 0; i < Items.Count; i++)
 			{
 				Indiсes.Add(i);
@@ -119,7 +114,6 @@ namespace Track.Relation.Transact
 
 		public bool Remove(TValue item)
 		{
-			ThrowIfCommitedEnable();
 			var index = Items.IndexOf(item);
 			if (index >= 0)
 			{
@@ -132,7 +126,6 @@ namespace Track.Relation.Transact
 
 		public void RemoveAt(int index)
 		{
-			ThrowIfCommitedEnable();
 			Items.RemoveAt(index);
 			for (int i = index; i < Items.Count; i++)
 			{
@@ -145,16 +138,16 @@ namespace Track.Relation.Transact
 			return GetEnumerator();
 		}
 
-		protected override void CommitData()
+		public override void Commit(Transaction<TKey> transaction)
 		{
-			ListObserver.Commit(Indiсes);
+			ListObserver.Commit(Indiсes, transaction);
 		}
-		protected override void RevertData()
+		public override void Revert()
 		{
 			ListObserver.Revert();
 			Indiсes.Clear();
 		}
-		protected override void OffsetData(TKey key)
+		public override void Offset(TKey key)
 		{
 			ListObserver.Offset(key);
 			Indiсes.Clear();

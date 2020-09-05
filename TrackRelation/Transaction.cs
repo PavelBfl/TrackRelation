@@ -7,21 +7,40 @@ namespace Track.Relation
 	/// <summary>
 	/// Транзакция
 	/// </summary>
-	public abstract class Transaction<T> : IDisposable
+	public class Transaction<T> : IDisposable
 	{
-		internal Transaction()
+		public Transaction(ICommitKeyProvider<T> commitKeyProvider)
 		{
-
+			CommitKeyProvider = commitKeyProvider ?? throw new ArgumentNullException(nameof(commitKeyProvider));
 		}
+
+		/// <summary>
+		/// Поставщик ключей фиксации
+		/// </summary>
+		public ICommitKeyProvider<T> CommitKeyProvider { get; }
 
 		/// <summary>
 		/// Ключ транзакции
 		/// </summary>
-		public abstract T Key { get; }
+		public T Key
+		{
+			get
+			{
+				if (new Comparable<T>(key).IsDefault())
+				{
+					key = CommitKeyProvider.CreateKey();
+				}
+				return key;
+			}
+		}
+		private T key = default;
 
 		/// <summary>
 		/// Завершить работу транзакции
 		/// </summary>
-		public abstract void Dispose();
+		public void Dispose()
+		{
+			
+		}
 	}
 }

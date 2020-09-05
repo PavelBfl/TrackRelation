@@ -7,44 +7,45 @@ using Xunit;
 
 namespace TrackRelation.Test.Transact
 {
-	public class ValueObserverTest
+	public class ValueObserverTest : ValueTestBase
 	{
-		[Fact]
-		public void Constructor_Empty_DefaultDispatcher()
-		{
-			var track = new ValueObserver<object>();
-			Assert.Equal(track.DispatcherTrack, DispatcherTrack.Default);
-		}
 		[Fact]
 		public void Constructor_Empty_DefaultComparer()
 		{
-			var track = new ValueObserver<object>();
+			var track = new ValueObserver<object, object>();
 			Assert.Equal(track.Comparer, EqualityComparer<object>.Default);
 		}
 		[Fact]
 		public void Constructor_SetValueAccess_CustomValueAcces()
 		{
 			var valueAccess = new ValueAccess<object>(new MockTest<object>());
-			var track = new ValueObserver<object>(valueAccess: valueAccess);
+			var track = new ValueObserver<object, object>(valueAccess: valueAccess);
 			Assert.Equal(track.ValueAccess, valueAccess);
-		}
-		[Fact]
-		public void Constructor_SetDispatcher_CustomDispatcher()
-		{
-			var dispatcher = new DispatcherTrack();
-			var track = new ValueObserver<object>(dispatcher: dispatcher);
-			Assert.Equal(track.DispatcherTrack, dispatcher);
 		}
 		[Fact]
 		public void Constructor_SetEqualityComparer_CustomEqualityComparer()
 		{
 			var comparer = new EqualityComparerMock<object>();
-			var track = new ValueObserver<object>(comparer: comparer);
+			var track = new ValueObserver<object, object>(comparer: comparer);
 			Assert.Equal(track.Comparer, comparer);
 		}
+		[Theory]
+		[MemberData(nameof(ChangeData))]
+		public void Value_Revert_InitValue<T>(T initValue, T newValue)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var mockTest = new MockTest<T>()
+			{
+				PropertyTest = initValue,
+			};
+			var valueAccess = new ValueAccess<T>(mockTest);
+			var track = new ValueObserver<int?, T>(valueAccess);
+			track.Commit(commitKeyProvider);
+			mockTest.PropertyTest = newValue;
+			track.Revert();
+			Assert.Equal(mockTest.PropertyTest, initValue);
+		}
 		
-		
-
 
 		private class MockTest<T>
 		{

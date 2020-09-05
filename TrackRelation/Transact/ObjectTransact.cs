@@ -7,74 +7,32 @@ namespace Track.Relation.Transact
 	/// <summary>
 	/// Объект потдержки транзакций
 	/// </summary>
-	public abstract class ObjectTransact<TKey> : ObjectTrack<TKey>
+	public abstract class ObjectTransact<TKey>
 	{
-		public ObjectTransact(DispatcherTrack<TKey> dispatcherTrack)
-			: base(dispatcherTrack)
-		{
-
-		}
-
 		/// <summary>
 		/// Зафиксировать данные
 		/// </summary>
-		public void Commit()
+		/// <param name="commitKeyProvider">Поставщик ключей фиксации</param>
+		public void Commit(ICommitKeyProvider<TKey> commitKeyProvider)
 		{
-			using (new LocalTransaction<TKey>(DispatcherTrack))
+			using (var transaction = new Transaction<TKey>(commitKeyProvider))
 			{
-				CommitData();
+				Commit(transaction);
 			}
 		}
 		/// <summary>
-		/// Зафиксировать внутриние данные
+		/// Зафиксировать данные
 		/// </summary>
-		protected abstract void CommitData();
+		/// <param name="transaction">Транзакция</param>
+		public abstract void Commit(Transaction<TKey> transaction);
 		/// <summary>
 		/// Отменить изменения
 		/// </summary>
-		public void Revert()
-		{
-			ThrowIfCommitedEnable();
-			RevertData();
-		}
-		/// <summary>
-		/// Отменить внутриние изменения
-		/// </summary>
-		protected abstract void RevertData();
+		public abstract void Revert();
 		/// <summary>
 		/// Сместить данные до ревизии
 		/// </summary>
 		/// <param name="key">Ключ ревизии</param>
-		public void Offset(TKey key)
-		{
-			ThrowIfCommitedEnable();
-			OffsetData(key);
-		}
-		/// <summary>
-		/// Сместить внутриние данные до ревизии
-		/// </summary>
-		/// <param name="key">Ключ ревизии</param>
-		protected abstract void OffsetData(TKey key);
-
-		/// <summary>
-		/// Вызвать исключение если производится фиксация данных
-		/// </summary>
-		protected void ThrowIfCommitedEnable()
-		{
-			if (!(DispatcherTrack.Transaction is null))
-			{
-				throw new InvalidOperationException();
-			}
-		}
-		/// <summary>
-		/// Вызвать исключение если фиксация не активна
-		/// </summary>
-		protected void ThrowIfCommitedDisable()
-		{
-			if (DispatcherTrack.Transaction is null)
-			{
-				throw new InvalidOperationException();
-			}
-		}
+		public abstract void Offset(TKey key);
 	}
 }

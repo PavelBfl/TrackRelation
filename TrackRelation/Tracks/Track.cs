@@ -48,8 +48,9 @@ namespace Track.Relation.Tracks
 		/// <returns>true если новое значение было сохранено, иначе false</returns>
 		public bool SetValue(TValue value, Transaction<TKey> transaction)
 		{
-			if (!TryGetLastValue(out var lastValue) || !Comparer.Equals(value, lastValue))
+			if (!TryGetLastRange(out var range) || !Comparer.Equals(value, range.Value))
 			{
+				CheckKey(range, transaction);
 				Close(transaction);
 				track.Add(new RangeTrack<TKey, TValue>(transaction.Key, value));
 				return true;
@@ -62,14 +63,29 @@ namespace Track.Relation.Tracks
 		/// <param name="transaction">Транзакция</param>
 		public void Close(Transaction<TKey> transaction)
 		{
-			var lastIndex = track.Count - 1;
-			if (lastIndex >= 0)
+			if (TryGetLastRange(out var lastRange))
 			{
-				var lastRange = track[lastIndex];
+				CheckKey(lastRange, transaction);
 				if (new Comparable<TKey>(lastRange.End).IsDefault())
 				{
-					track[lastIndex] = lastRange.Close(transaction.Key);
+					track[track.Count - 1] = lastRange.Close(transaction.Key);
 				}
+			}
+		}
+
+		/// <summary>
+		/// Проверить корректность предоставляемого ключа
+		/// </summary>
+		/// <param name="range">Последний диапазон значения</param>
+		/// <param name="transaction">Транзакция</param>
+		private static void CheckKey(RangeTrack<TKey, TValue> range, Transaction<TKey> transaction)
+		{
+			var end = new Comparable<TKey>(range.End);
+			var currentKey = end.IsDefault() ? new Comparable<TKey>(range.Begin) : end;
+
+			if (currentKey >= new Comparable<TKey>(transaction.Key))
+			{
+				throw new InvalidOperationException();
 			}
 		}
 
@@ -100,13 +116,25 @@ namespace Track.Relation.Tracks
 		/// <returns>true если значение удалось получить, иначе false</returns>
 		public bool TryGetLastValue(out TValue result)
 		{
+			var tryResult = TryGetLastRange(out var lastRange);
+			result = lastRange.Value;
+			return tryResult;
+		}
+
+		/// <summary>
+		/// Получить последний диапазон значения
+		/// </summary>
+		/// <param name="result">Результирующий диапазон</param>
+		/// <returns>True если удалось вернуть последний диапазон, иначе false</returns>
+		private bool TryGetLastRange(out RangeTrack<TKey, TValue> result)
+		{
 			var lastIndex = track.Count - 1;
 			if (lastIndex >= 0)
 			{
 				var lastRange = track[lastIndex];
 				if (new Comparable<TKey>(lastRange.End).IsDefault())
 				{
-					result = lastRange.Value;
+					result = lastRange;
 					return true;
 				}
 			}

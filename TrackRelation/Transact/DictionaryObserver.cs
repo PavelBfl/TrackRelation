@@ -13,8 +13,7 @@ namespace Track.Relation.Transact
 	/// <typeparam name="TDictionary">Тип словаря</typeparam>
 	public class DictionaryObserver<TCommitKey, TKey, TValue, TDictionary> : ObjectTransact<TCommitKey> where TDictionary : IDictionary<TKey, TValue>
 	{
-		public DictionaryObserver(TDictionary dictionary, IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer, DispatcherTrack<TCommitKey> dispatcher)
-			: base(dispatcher)
+		public DictionaryObserver(TDictionary dictionary, IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
 		{
 			Dictionary = dictionary;
 			Track = new DictionaryTrack<TCommitKey, TKey, TValue>(keyComparer, valueComparer);
@@ -38,25 +37,22 @@ namespace Track.Relation.Transact
 		/// Зафиксировать данные
 		/// </summary>
 		/// <param name="indices">Фиксируемые индексы</param>
-		public void Commit(IEnumerable<TKey> indices)
+		public void Commit(IEnumerable<TKey> indices, Transaction<TCommitKey> transaction)
 		{
-			using (new LocalTransaction<TCommitKey>(DispatcherTrack))
-			{
-				Track.Commit(Dictionary, DispatcherTrack.Transaction, indices);
-			}
+			Track.Commit(Dictionary, transaction, indices);
 		}
 
-		protected override void CommitData()
+		public override void Commit(Transaction<TCommitKey> transaction)
 		{
-			Track.Commit(Dictionary, DispatcherTrack.Transaction);
+			Track.Commit(Dictionary, transaction);
 		}
 
-		protected override void OffsetData(TCommitKey key)
+		public override void Offset(TCommitKey key)
 		{
 			Track.Offset(Dictionary, key);
 		}
 
-		protected override void RevertData()
+		public override void Revert()
 		{
 			Track.Revert(Dictionary);
 		}

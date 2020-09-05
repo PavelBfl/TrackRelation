@@ -5,32 +5,42 @@ using Track.Relation.Tracks;
 
 namespace Track.Relation.Transact
 {
+	/// <summary>
+	/// Наблюдатель за изменениями значения
+	/// </summary>
+	/// <typeparam name="TKey">Тип ключа фиксации</typeparam>
+	/// <typeparam name="TValue">Тип наблюдаемого значения</typeparam>
 	public class ValueObserver<TKey, TValue> : ObjectTransact<TKey>
 	{
-		public ValueObserver(IValueAccess<TValue> valueAccess = null, IEqualityComparer<TValue> comparer = null, DispatcherTrack<TKey> dispatcher = null)
-			: base(dispatcher)
+		public ValueObserver(IValueAccess<TValue> valueAccess = null, IEqualityComparer<TValue> comparer = null)
 		{
 			ValueAccess = valueAccess;
 			Track = new Track<TKey, TValue>(comparer);
 		}
 
+		/// <summary>
+		/// Обект доступа к отслеживаемым значениям
+		/// </summary>
 		public IValueAccess<TValue> ValueAccess { get; set; }
 
+		/// <summary>
+		/// Объект сравнения данных
+		/// </summary>
 		public IEqualityComparer<TValue> Comparer => Track.Comparer;
 		private Track<TKey, TValue> Track { get; }
 
-		protected override void CommitData()
+		public override void Commit(Transaction<TKey> transaction)
 		{
-			Track.SetValue(ValueAccess.GetValue(), DispatcherTrack.Transaction);
+			Track.SetValue(ValueAccess.GetValue(), transaction);
 		}
-		protected override void RevertData()
+		public override void Revert()
 		{
 			if (Track.TryGetLastValue(out var result))
 			{
 				ValueAccess.SetValue(result);
 			}
 		}
-		protected override void OffsetData(TKey key)
+		public override void Offset(TKey key)
 		{
 			if (Track.TryGetValue(key, out var result))
 			{
