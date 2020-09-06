@@ -4,13 +4,11 @@ using System.Linq;
 using System.Text;
 using Track.Relation;
 using Track.Relation.Transact;
-using TrackRelation.Test;
-using TrackRelation.Test.Transact;
 using Xunit;
 
 namespace Track.Relation.Test.Transact
 {
-	public class ValueTransactTest : ValueTestBase
+	public class ValueTransactTest : TestBase
 	{
 		[Fact]
 		public void Constructor_Empty_TrackUndefined()

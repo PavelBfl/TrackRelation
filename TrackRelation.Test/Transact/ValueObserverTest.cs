@@ -5,9 +5,9 @@ using Track.Relation;
 using Track.Relation.Transact;
 using Xunit;
 
-namespace TrackRelation.Test.Transact
+namespace Track.Relation.Test.Transact
 {
-	public class ValueObserverTest : ValueTestBase
+	public class ValueObserverTest : TestBase
 	{
 		[Fact]
 		public void Constructor_Empty_DefaultComparer()
@@ -44,6 +44,28 @@ namespace TrackRelation.Test.Transact
 			mockTest.PropertyTest = newValue;
 			track.Revert();
 			Assert.Equal(mockTest.PropertyTest, initValue);
+		}
+		[Theory]
+		[MemberData(nameof(ChangeData))]
+		public void Value_Offset_InitValue<T>(T initValue, T newValue)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var mockTest = new MockTest<T>()
+			{
+				PropertyTest = initValue,
+			};
+			var valueAccess = new ValueAccess<T>(mockTest);
+			var track = new ValueObserver<int?, T>(valueAccess);
+			track.Commit(commitKeyProvider);
+			mockTest.PropertyTest = newValue;
+			track.Offset(commitKeyProvider.CurrentKey);
+			Assert.Equal(mockTest.PropertyTest, initValue);
+		}
+		[Fact]
+		public void Value_WithoutValueAccess_NullReferenceException()
+		{
+			var track = new ValueObserver<int?, object>();
+			Assert.Throws<NullReferenceException>(() => track.Commit(new CommitKeyProvider()));
 		}
 		
 

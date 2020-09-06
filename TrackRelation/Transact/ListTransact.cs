@@ -14,14 +14,22 @@ namespace Track.Relation.Transact
 	public class ListTransact<TKey, TValue> : ObjectTransact<TKey>, IList<TValue>
 	{
 		public ListTransact(IEnumerable<TValue> items, IEqualityComparer<TValue> equalityComparer)
+			: this(equalityComparer)
 		{
 			if (items is null)
 			{
 				throw new ArgumentNullException(nameof(items));
 			}
-			ListObserver = new ListObserver<TKey, TValue, List<TValue>>(new List<TValue>(), equalityComparer);
-
 			AddRange(items);
+		}
+		public ListTransact(IEqualityComparer<TValue> equalityComparer)
+		{
+			ListObserver = new ListObserver<TKey, TValue, List<TValue>>(new List<TValue>(), equalityComparer);
+		}
+		public ListTransact()
+			: this(null)
+		{
+
 		}
 
 		/// <summary>

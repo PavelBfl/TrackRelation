@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Track.Relation;
 
-namespace TrackRelation.Test
+namespace Track.Relation.Test
 {
 	class CommitKeyProvider : ICommitKeyProvider<int?>
 	{

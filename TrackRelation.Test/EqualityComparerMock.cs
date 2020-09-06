@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
-namespace TrackRelation.Test
+namespace Track.Relation.Test
 {
 	class EqualityComparerMock<T> : IEqualityComparer<T>
 	{

@@ -13,7 +13,7 @@ namespace Track.Relation.Transact
 	/// <typeparam name="TList">Тип коллекции</typeparam>
 	public class ListObserver<TKey, TItem, TList> : ObjectTransact<TKey> where TList : IList<TItem>
 	{
-		public ListObserver(TList list, IEqualityComparer<TItem> comparer)
+		public ListObserver(TList list = default, IEqualityComparer<TItem> comparer = null)
 		{
 			List = list;
 			Track = new ListTrack<TKey, TItem>(comparer);
