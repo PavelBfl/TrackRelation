@@ -9,7 +9,7 @@ namespace Track.Relation.Tracks
 	/// Поток отслеживания значения
 	/// </summary>
 	/// <typeparam name="TValue">Тип отслеживаемого значения</typeparam>
-	class Track<TKey, TValue>
+	public class Track<TKey, TValue>
 	{
 		public Track()
 			: this(null)
