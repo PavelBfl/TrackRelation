@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 
 namespace Track.Relation.Tracks
@@ -34,7 +35,8 @@ namespace Track.Relation.Tracks
 		/// <summary>
 		/// Список диапазонов изменения значений
 		/// </summary>
-		private readonly List<RangeTrack<TKey, TValue>> track = new List<RangeTrack<TKey, TValue>>();
+		public IEnumerable<ICommit<TKey, TValue>> Ranges => ranges.Cast<ICommit<TKey, TValue>>();
+		private readonly List<RangeTrack<TKey, TValue>> ranges = new List<RangeTrack<TKey, TValue>>();
 		/// <summary>
 		/// Объект сравнения значений
 		/// </summary>
@@ -52,7 +54,7 @@ namespace Track.Relation.Tracks
 			{
 				CheckKey(range, transaction);
 				Close(transaction);
-				track.Add(new RangeTrack<TKey, TValue>(transaction.Key, value));
+				ranges.Add(new RangeTrack<TKey, TValue>(transaction.Key, value));
 				return true;
 			}
 			return false;
@@ -68,7 +70,7 @@ namespace Track.Relation.Tracks
 				CheckKey(lastRange, transaction);
 				if (new Comparable<TKey>(lastRange.End).IsDefault())
 				{
-					track[track.Count - 1] = lastRange.Close(transaction.Key);
+					ranges[ranges.Count - 1] = lastRange.Close(transaction.Key);
 				}
 			}
 		}
@@ -97,15 +99,11 @@ namespace Track.Relation.Tracks
 		/// <returns>true если значение удалось найти, наче false</returns>
 		public bool TryGetValue(TKey key, out TValue result)
 		{
-			foreach (var range in track)
+			if (TryFind(key, out var findResult))
 			{
-				if (range.Contains(key))
-				{
-					result = range.Value;
-					return true;
-				}
+				result = findResult.Range.Value;
+				return true;
 			}
-
 			result = default;
 			return false;
 		}
@@ -128,10 +126,10 @@ namespace Track.Relation.Tracks
 		/// <returns>True если удалось вернуть последний диапазон, иначе false</returns>
 		private bool TryGetLastRange(out RangeTrack<TKey, TValue> result)
 		{
-			var lastIndex = track.Count - 1;
+			var lastIndex = ranges.Count - 1;
 			if (lastIndex >= 0)
 			{
-				var lastRange = track[lastIndex];
+				var lastRange = ranges[lastIndex];
 				if (new Comparable<TKey>(lastRange.End).IsDefault())
 				{
 					result = lastRange;
@@ -139,6 +137,98 @@ namespace Track.Relation.Tracks
 				}
 			}
 
+			result = default;
+			return false;
+		}
+
+		/// <summary>
+		/// Отчистить сохранённые данные
+		/// </summary>
+		/// <param name="begin">Ключ фиксации с которого удаляются данные</param>
+		/// <param name="end">Ключ фиксации до которого удаляются данные</param>
+		public void Clear(TKey begin, TKey end)
+		{
+			var beginComparable = new Comparable<TKey>(begin);
+			var endComparable = new Comparable<TKey>(end);
+			if (beginComparable < endComparable)
+			{
+				throw new InvalidOperationException();
+			}
+
+			var beginData = FindIndex(begin);
+			var endData = FindIndex(end);
+
+			if (beginData.Index >= 0 && endData.Index >= 0)
+			{
+				ranges.RemoveRange(beginData.Index, endData.Index - beginData.Index);
+			}
+			else if (beginData.Index >= 0 && endData.Position == TrackPosition.After)
+			{
+				ranges.RemoveRange(beginData.Index, ranges.Count - beginData.Index);
+			}
+			else if (beginData.Position == TrackPosition.Before && endData.Index >= 0)
+			{
+				ranges.RemoveRange(0, endData.Index);
+			}
+			else if (!((beginData.Position == TrackPosition.Before && endData.Position == TrackPosition.Before) ||
+				(beginData.Position == TrackPosition.After && endData.Position == TrackPosition.After)))
+			{
+				throw new InvalidOperationException();
+			}
+		}
+
+		private enum TrackPosition
+		{
+			None,
+			Before,
+			After,
+		}
+		private (TrackPosition Position, int Index) FindIndex(TKey key)
+		{
+			var keyComparable = new Comparable<TKey>(key);
+			if (ranges.Any())
+			{
+				if (ranges.First().CompareTo(key) < 0)
+				{
+					return (TrackPosition.Before, -1);
+				}
+				else if (ranges.Last().CompareTo(key) > 0)
+				{
+					return (TrackPosition.After, -1);
+				}
+				else
+				{
+					for (int i = 0; i < ranges.Count; i++)
+					{
+						var range = ranges[i];
+						if (range.Contains(key))
+						{
+							return (TrackPosition.None, i);
+						}
+					}
+					throw new InvalidOperationException();
+				}
+			}
+			return (TrackPosition.None, -1);
+		}
+
+		/// <summary>
+		/// Найти диапазон значения
+		/// </summary>
+		/// <param name="key">Ключ искомого значения</param>
+		/// <param name="result">Данные о найденом значении</param>
+		/// <returns>True если удалось найти данные, иначе False</returns>
+		private bool TryFind(TKey key, out (int Index, RangeTrack<TKey, TValue> Range) result)
+		{
+			for (int i = 0; i < ranges.Count; i++)
+			{
+				var range = ranges[i];
+				if (range.Contains(key))
+				{
+					result = (i, range);
+					return true;
+				}
+			}
 			result = default;
 			return false;
 		}

@@ -8,17 +8,22 @@ namespace Track.Relation.Tracks
 	/// Диапазон существования значения
 	/// </summary>
 	/// <typeparam name="TValue">Тип значения</typeparam>
-	struct RangeTrack<TKey, TValue>
+	struct RangeTrack<TKey, TValue> : IComparable<TKey>, ICommit<TKey, TValue>
 	{
 		public RangeTrack(TKey begin, TValue value)
+			: this(begin, default, value)
 		{
-			Begin = begin;
-			End = default;
-			Value = value;
+			
 		}
 		public RangeTrack(TKey begin, TKey end, TValue value)
 		{
-			if (Comparer<TKey>.Default.Compare(begin, end) >= 0)
+			var beginComparable = new Comparable<TKey>(begin);
+			if (beginComparable.IsDefault())
+			{
+				throw new InvalidOperationException();
+			}
+			var endComparable = new Comparable<TKey>(end);
+			if (!endComparable.IsDefault() && beginComparable >= endComparable)
 			{
 				throw new ArgumentOutOfRangeException(nameof(end));
 			}
@@ -34,10 +39,10 @@ namespace Track.Relation.Tracks
 		/// Конец существования значения, если null то существование значения не закрыто
 		/// </summary>
 		public TKey End { get; }
-		/// <summary>
-		/// Отслеживаемое значение
-		/// </summary>
+
+		public TKey Key => Begin;
 		public TValue Value { get; }
+
 
 		/// <summary>
 		/// Проверка вхождения ключа в диапазон
@@ -46,16 +51,7 @@ namespace Track.Relation.Tracks
 		/// <returns>true если ключ входит в диапазон, иначе false</returns>
 		public bool Contains(TKey key)
 		{
-			var begin = new Comparable<TKey>(Begin);
-			var end = new Comparable<TKey>(End);
-			if (end.IsDefault())
-			{
-				return begin <= key;
-			}
-			else
-			{
-				return begin <= key && key < end;
-			}
+			return CompareTo(key) == 0;
 		}
 		/// <summary>
 		/// Создать закрытую копию диапазона
@@ -65,6 +61,33 @@ namespace Track.Relation.Tracks
 		public RangeTrack<TKey, TValue> Close(TKey end)
 		{
 			return new RangeTrack<TKey, TValue>(Begin, end, Value);
+		}
+
+		/// <summary>
+		/// Сравнить значение ключа фиксации
+		/// </summary>
+		/// <param name="other">Ключ фиксации</param>
+		/// <returns>Значение меньше 0 если ключ меньше начала указаного диапазоно, значение больше 0 если ключ больше значения завершения диапазона, значение равно 0 если ключ входит в диапазон</returns>
+		public int CompareTo(TKey other)
+		{
+			var begin = new Comparable<TKey>(Begin);
+			var otherComparable = new Comparable<TKey>(other);
+			if (begin > otherComparable)
+			{
+				return -1;
+			}
+			else
+			{
+				var end = new Comparable<TKey>(End);
+				if (end.IsDefault() || otherComparable < end)
+				{
+					return 0;
+				}
+				else
+				{
+					return 1;
+				}
+			}
 		}
 	}
 }
