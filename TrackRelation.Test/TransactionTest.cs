@@ -31,5 +31,13 @@ namespace Track.Relation.Test
 				Assert.Equal(commitKeyProvider.CurrentKey, key);
 			}
 		}
+		[Fact]
+		public void Key_Dispose_ObjectDisposedException()
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var transaction = new Transaction<int?>(commitKeyProvider);
+			transaction.Dispose();
+			Assert.Throws<ObjectDisposedException>(() => transaction.Key);
+		}
 	}
 }

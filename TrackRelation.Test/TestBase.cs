@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Track.Relation.Test.Transact
+namespace Track.Relation.Test
 {
 	public class TestBase
 	{

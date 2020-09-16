@@ -35,7 +35,7 @@ namespace Track.Relation.Tracks
 		/// <summary>
 		/// Список диапазонов изменения значений
 		/// </summary>
-		public IEnumerable<ICommit<TKey, TValue>> Ranges => ranges.Cast<ICommit<TKey, TValue>>();
+		public IEnumerable<ICommit<TKey, TValue>> Commits => ranges.Cast<ICommit<TKey, TValue>>();
 		private readonly List<RangeTrack<TKey, TValue>> ranges = new List<RangeTrack<TKey, TValue>>();
 		/// <summary>
 		/// Объект сравнения значений
@@ -99,10 +99,17 @@ namespace Track.Relation.Tracks
 		/// <returns>true если значение удалось найти, наче false</returns>
 		public bool TryGetValue(TKey key, out TValue result)
 		{
-			if (TryFind(key, out var findResult))
+			if (new Comparable<TKey>(key).IsDefault())
 			{
-				result = findResult.Range.Value;
-				return true;
+				throw new InvalidOperationException();
+			}
+			foreach (var range in ranges)
+			{
+				if (range.Contains(key))
+				{
+					result = range.Value;
+					return true;
+				}
 			}
 			result = default;
 			return false;
@@ -210,27 +217,6 @@ namespace Track.Relation.Tracks
 				}
 			}
 			return (TrackPosition.None, -1);
-		}
-
-		/// <summary>
-		/// Найти диапазон значения
-		/// </summary>
-		/// <param name="key">Ключ искомого значения</param>
-		/// <param name="result">Данные о найденом значении</param>
-		/// <returns>True если удалось найти данные, иначе False</returns>
-		private bool TryFind(TKey key, out (int Index, RangeTrack<TKey, TValue> Range) result)
-		{
-			for (int i = 0; i < ranges.Count; i++)
-			{
-				var range = ranges[i];
-				if (range.Contains(key))
-				{
-					result = (i, range);
-					return true;
-				}
-			}
-			result = default;
-			return false;
 		}
 	}
 }

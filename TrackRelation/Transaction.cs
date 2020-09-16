@@ -18,6 +18,7 @@ namespace Track.Relation
 		/// Поставщик ключей фиксации
 		/// </summary>
 		public ICommitKeyProvider<T> CommitKeyProvider { get; }
+		private bool Disposed { get; set; }
 
 		/// <summary>
 		/// Ключ транзакции
@@ -26,6 +27,10 @@ namespace Track.Relation
 		{
 			get
 			{
+				if (Disposed)
+				{
+					throw new ObjectDisposedException(nameof(Transaction<T>));
+				}
 				if (new Comparable<T>(key).IsDefault())
 				{
 					key = CommitKeyProvider.CreateKey();
@@ -40,7 +45,7 @@ namespace Track.Relation
 		/// </summary>
 		public void Dispose()
 		{
-			
+			Disposed = true;
 		}
 	}
 }

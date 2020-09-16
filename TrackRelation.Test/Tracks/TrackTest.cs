@@ -1,0 +1,217 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Xml.Serialization;
+using Track.Relation.Tracks;
+using Xunit;
+
+namespace Track.Relation.Test.Tracks
+{
+	public class TrackTest : TestBase
+	{
+		private static Track<TKey, TValue> CreateTrack<TKey, TValue>(TValue value, ICommitKeyProvider<TKey> commitKeyProvider)
+		{
+			using (var transaction = new Transaction<TKey>(commitKeyProvider))
+			{
+				return new Track<TKey, TValue>(value, transaction);
+			}
+		}
+
+		[Fact]
+		public void Constructor_Empty_DefaultComparer()
+		{
+			var track = new Track<object, object>();
+			Assert.Equal(EqualityComparer<object>.Default, track.Comparer);
+		}
+		[Fact]
+		public void Constructor_Empty_CommitsEmpty()
+		{
+			var track = new Track<object, object>();
+			Assert.Empty(track.Commits);
+		}
+		[Fact]
+		public void Constructor_SetComparer_CustomComparer()
+		{
+			var comparer = new EqualityComparerMock<object>();
+			var track = new Track<object, object>(comparer);
+			Assert.Equal(comparer, track.Comparer);
+		}
+		[Fact]
+		public void Constructor_SetNullConstructor_DefaultComparer()
+		{
+			var track = new Track<object, object>(null);
+			Assert.Equal(EqualityComparer<object>.Default, track.Comparer);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void Constructor_SetValue_InitCommit<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>(value, transaction);
+			Assert.Single(track.Commits);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void Constructor_SetValue_InitValueCommit<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>(value, transaction);
+			Assert.Equal(value, track.Commits.Single().Value);
+		}
+		[Fact]
+		public void Constructor_SetValue_DefaultComparer()
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, object>(null, transaction);
+			Assert.Equal(EqualityComparer<object>.Default, track.Comparer);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void Constructor_SetValueSetComparer_InitCommit<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>(value, new EqualityComparerMock<T>(), transaction);
+			Assert.Single(track.Commits);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void Constructor_SetValueSetComparer_InitValueCommit<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>(value, new EqualityComparerMock<T>(), transaction);
+			Assert.Equal(value, track.Commits.Single().Value);
+		}
+		[Fact]
+		public void Constructor_SetValueSetComparer_CustomComparer()
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var comparer = new EqualityComparerMock<object>();
+			var track = new Track<int?, object>(null, comparer, transaction);
+			Assert.Equal(comparer, track.Comparer);
+		}
+		[Fact]
+		public void TryGetLastValue_Empty_UndefinedValue()
+		{
+			var track = new Track<object, object>();
+			Assert.False(track.TryGetLastValue(out var _));
+		}
+		[Fact]
+		public void TryGetLastValue_InitValue_DefinedValue()
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, object>(null, transaction);
+			Assert.True(track.TryGetLastValue(out var _));
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void TryGetLastValue_InitValue_CustomValue<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>(value, transaction);
+
+			track.TryGetLastValue(out var lastValue);
+			Assert.Equal(value, lastValue);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void TryGetLastValue_CommitValue_CustomValue<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>();
+			track.SetValue(value, transaction);
+
+			track.TryGetLastValue(out var lastValue);
+			Assert.Equal(value, lastValue);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void SetValue_NewValue_SetSuccess<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			using var transaction = new Transaction<int?>(commitKeyProvider);
+			var track = new Track<int?, T>();
+			var success = track.SetValue(value, transaction);
+			Assert.True(success);
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void SetValue_SameValue_SetFail<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = CreateTrack(value, commitKeyProvider);
+
+			using (var transaction = new Transaction<int?>(commitKeyProvider))
+			{
+				var success = track.SetValue(value, transaction);
+				Assert.False(success);
+			}
+		}
+		[Theory]
+		[MemberData(nameof(ChangeData))]
+		public void SetValue_NewValue_SuccessIfChanged<T>(T initValue, T newValue)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = CreateTrack(initValue, commitKeyProvider);
+
+			using (var transaction = new Transaction<int?>(commitKeyProvider))
+			{
+				var success = track.SetValue(newValue, transaction);
+				Assert.Equal(!track.Comparer.Equals(initValue, newValue), success);
+			}
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void Close_InitValue_LastValueUndefined<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = CreateTrack(value, commitKeyProvider);
+			
+			using (var transaction = new Transaction<int?>(commitKeyProvider))
+			{
+				track.Close(transaction);
+				Assert.False(track.TryGetLastValue(out var _));
+			}
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void TryGetValue_ExistsKey_GetSuccess<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = CreateTrack(value, commitKeyProvider);
+
+			Assert.True(track.TryGetValue(commitKeyProvider.CurrentKey, out var _));
+		}
+		[Theory]
+		[MemberData(nameof(InitData))]
+		public void TryGetValue_ExistsKey_CommitValue<T>(T value)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = CreateTrack(value, commitKeyProvider);
+
+			track.TryGetValue(commitKeyProvider.CurrentKey, out var commitValue);
+			Assert.Equal(value, commitValue);
+		}
+		[Fact]
+		public void TryGetValue_UndefinedKey_GetFail()
+		{
+			var track = new Track<object, object>();
+			Assert.False(track.TryGetValue(new object(), out var _));
+		}
+		[Fact]
+		public void TryGetValue_DefaultKey_InvalidOperationException()
+		{
+			var track = new Track<object, object>();
+			Assert.Throws<InvalidOperationException>(() => track.TryGetValue(null, out var _));
+		}
+	}
+}
