@@ -10,6 +10,29 @@ namespace Track.Relation.Test.Tracks
 {
 	public class TrackTest : TestBase
 	{
+		public static IEnumerable<IEnumerable<object>> CheckDataTrack { get; } = new object[][]
+		{
+			new object[]
+			{
+				new HashSet<int>(),
+				new HashSet<int>() { -1, 0, 1 },
+				new HashSet<int>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+			},
+			new object[]
+			{
+				new HashSet<double>(),
+				new HashSet<double>() { -1, 0, 1 },
+				new HashSet<double>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+			},
+			new object[]
+			{
+				new HashSet<string>() { },
+				new HashSet<string>() { null, string.Empty, "a", "b", "c" },
+				new HashSet<string>() { "0", "1", "2", "3", "4", "5", "6" ,"7" ,"8" ,"9" },
+			}
+		};
+		public static IEnumerable<object[]> InitTrack { get; } = Flat(CheckDataTrack);
+
 		private static Track<TKey, TValue> CreateTrack<TKey, TValue>(TValue value, ICommitKeyProvider<TKey> commitKeyProvider)
 		{
 			using (var transaction = new Transaction<TKey>(commitKeyProvider))
@@ -212,6 +235,39 @@ namespace Track.Relation.Test.Tracks
 		{
 			var track = new Track<object, object>();
 			Assert.Throws<InvalidOperationException>(() => track.TryGetValue(null, out var _));
+		}
+
+		[Theory]
+		[MemberData(nameof(InitTrack))]
+		public void Clear_All_CommitsEmpty<T>(HashSet<T> values)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = new Track<int?, T>();
+			foreach (var value in values)
+			{
+				using var transaction = new Transaction<int?>(commitKeyProvider);
+				track.SetValue(value, transaction);
+			}
+			track.Clear(default, default);
+			Assert.Empty(track.Commits);
+		}
+		[Theory]
+		[MemberData(nameof(InitTrack))]
+		public void Clear_FirstHalf_SecondHalf<T>(HashSet<T> values)
+		{
+			var commitKeyProvider = new CommitKeyProvider();
+			var track = new Track<int?, T>();
+			foreach (var value in values)
+			{
+				using var transaction = new Transaction<int?>(commitKeyProvider);
+				track.SetValue(value, transaction);
+			}
+			var halfIndex = track.Commits.Count() / 2;
+			var halfKey = track.Commits.ElementAtOrDefault(halfIndex)?.Key;
+			var secondHalf = track.Commits.Skip(halfIndex).ToArray();
+			track.Clear(null, halfKey);
+
+			Assert.Equal(track.Commits, secondHalf);
 		}
 	}
 }

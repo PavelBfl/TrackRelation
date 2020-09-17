@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -103,13 +104,12 @@ namespace Track.Relation.Tracks
 			{
 				throw new InvalidOperationException();
 			}
-			foreach (var range in ranges)
+
+			var index = FindIndex(key);
+			if (0 <= index && index < ranges.Count)
 			{
-				if (range.Contains(key))
-				{
-					result = range.Value;
-					return true;
-				}
+				result = ranges[index].Value;
+				return true;
 			}
 			result = default;
 			return false;
@@ -151,57 +151,57 @@ namespace Track.Relation.Tracks
 		/// <summary>
 		/// Отчистить сохранённые данные
 		/// </summary>
-		/// <param name="begin">Ключ фиксации с которого удаляются данные</param>
-		/// <param name="end">Ключ фиксации до которого удаляются данные</param>
+		/// <param name="begin">Ключ фиксации с которого удаляются данные, если значение является default то отчиска происходит с начала</param>
+		/// <param name="end">Ключ фиксации до которого удаляются данные, если значение является default то отчистка производится до конца</param>
 		public void Clear(TKey begin, TKey end)
 		{
 			var beginComparable = new Comparable<TKey>(begin);
 			var endComparable = new Comparable<TKey>(end);
-			if (beginComparable < endComparable)
+			if (!beginComparable.IsDefault() && !endComparable.IsDefault() && beginComparable < endComparable)
 			{
 				throw new InvalidOperationException();
 			}
 
-			var beginData = FindIndex(begin);
-			var endData = FindIndex(end);
+			var beginIndex = beginComparable.IsDefault() ? -1 : FindIndex(begin);
+			var endIndex = endComparable.IsDefault() ? ranges.Count : FindIndex(end);
 
-			if (beginData.Index >= 0 && endData.Index >= 0)
+			if (beginIndex < 0 && ranges.Count <= endIndex)
 			{
-				ranges.RemoveRange(beginData.Index, endData.Index - beginData.Index);
+				ranges.Clear();
 			}
-			else if (beginData.Index >= 0 && endData.Position == TrackPosition.After)
+			else if (0 <= beginIndex && beginIndex < ranges.Count)
 			{
-				ranges.RemoveRange(beginData.Index, ranges.Count - beginData.Index);
+				if (0 <= endIndex && endIndex < ranges.Count)
+				{
+					ranges.RemoveRange(beginIndex, endIndex - beginIndex);
+				}
+				else
+				{
+					ranges.RemoveRange(beginIndex, ranges.Count - beginIndex);
+				}
 			}
-			else if (beginData.Position == TrackPosition.Before && endData.Index >= 0)
+			else if (0 <= endIndex && endIndex < ranges.Count)
 			{
-				ranges.RemoveRange(0, endData.Index);
-			}
-			else if (!((beginData.Position == TrackPosition.Before && endData.Position == TrackPosition.Before) ||
-				(beginData.Position == TrackPosition.After && endData.Position == TrackPosition.After)))
-			{
-				throw new InvalidOperationException();
+				ranges.RemoveRange(0, endIndex);
 			}
 		}
 
-		private enum TrackPosition
+		/// <summary>
+		/// Найти индекс диапазона по идентификатору фиксации
+		/// </summary>
+		/// <param name="key">Идентификатор фиксации</param>
+		/// <returns>Индекс найденого элемента, -1 если ключ меньше первого элемента, range.Count если ключ больше последнего элемента</returns>
+		private int FindIndex(TKey key)
 		{
-			None,
-			Before,
-			After,
-		}
-		private (TrackPosition Position, int Index) FindIndex(TKey key)
-		{
-			var keyComparable = new Comparable<TKey>(key);
 			if (ranges.Any())
 			{
 				if (ranges.First().CompareTo(key) < 0)
 				{
-					return (TrackPosition.Before, -1);
+					return -1;
 				}
 				else if (ranges.Last().CompareTo(key) > 0)
 				{
-					return (TrackPosition.After, -1);
+					return ranges.Count;
 				}
 				else
 				{
@@ -210,13 +210,13 @@ namespace Track.Relation.Tracks
 						var range = ranges[i];
 						if (range.Contains(key))
 						{
-							return (TrackPosition.None, i);
+							return i;
 						}
 					}
 					throw new InvalidOperationException();
 				}
 			}
-			return (TrackPosition.None, -1);
+			return -1;
 		}
 	}
 }
