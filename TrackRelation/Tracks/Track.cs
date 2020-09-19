@@ -105,10 +105,10 @@ namespace Track.Relation.Tracks
 				throw new InvalidOperationException();
 			}
 
-			var index = FindIndex(key);
-			if (0 <= index && index < ranges.Count)
+			var position = FindIndex(key);
+			if (position.State == PositionState.Index)
 			{
-				result = ranges[index].Value;
+				result = ranges[position.Index].Value;
 				return true;
 			}
 			result = default;
@@ -157,33 +157,80 @@ namespace Track.Relation.Tracks
 		{
 			var beginComparable = new Comparable<TKey>(begin);
 			var endComparable = new Comparable<TKey>(end);
-			if (!beginComparable.IsDefault() && !endComparable.IsDefault() && beginComparable < endComparable)
+			if (!beginComparable.IsDefault() && !endComparable.IsDefault() && beginComparable > endComparable)
 			{
 				throw new InvalidOperationException();
 			}
 
-			var beginIndex = beginComparable.IsDefault() ? -1 : FindIndex(begin);
-			var endIndex = endComparable.IsDefault() ? ranges.Count : FindIndex(end);
+			var beginPosition = beginComparable.IsDefault() ? Position.Before : FindIndex(begin);
+			var endPosition = endComparable.IsDefault() ? Position.After : FindIndex(end);
 
-			if (beginIndex < 0 && ranges.Count <= endIndex)
+			switch (beginPosition.State)
 			{
-				ranges.Clear();
+				case PositionState.None:
+					if (endPosition.State != PositionState.None)
+					{
+						throw new InvalidOperationException();
+					}
+					break;
+				case PositionState.Before:
+					switch (endPosition.State)
+					{
+						case PositionState.Before:
+							break;
+						case PositionState.After:
+							ranges.Clear();
+							break;
+						case PositionState.Skip:
+						case PositionState.Index:
+							RemoveRange(0, endPosition.Index);
+							break;
+						default: throw new InvalidOperationException();
+					}
+					break;
+				case PositionState.After:
+					if (endPosition.State != PositionState.After)
+					{
+						throw new InvalidOperationException();
+					}
+					break;
+				case PositionState.Skip:
+					switch (endPosition.State)
+					{
+						case PositionState.After:
+							RemoveRange(beginPosition.NextIndex, ranges.Count - 1);
+							break;
+						case PositionState.Skip:
+						case PositionState.Index:
+							RemoveRange(beginPosition.NextIndex, endPosition.Index);
+							break;
+						default: throw new InvalidOperationException();
+					}
+					break;
+				case PositionState.Index:
+					switch (endPosition.State)
+					{
+						case PositionState.After:
+							RemoveRange(beginPosition.Index, ranges.Count - 1);
+							break;
+						case PositionState.Skip:
+						case PositionState.Index:
+							RemoveRange(beginPosition.Index, endPosition.Index);
+							break;
+						default: throw new InvalidOperationException();
+					}
+					break;
+				default: throw new InvalidOperationException();
 			}
-			else if (0 <= beginIndex && beginIndex < ranges.Count)
-			{
-				if (0 <= endIndex && endIndex < ranges.Count)
-				{
-					ranges.RemoveRange(beginIndex, endIndex - beginIndex);
-				}
-				else
-				{
-					ranges.RemoveRange(beginIndex, ranges.Count - beginIndex);
-				}
-			}
-			else if (0 <= endIndex && endIndex < ranges.Count)
-			{
-				ranges.RemoveRange(0, endIndex);
-			}
+		}
+		/// <summary>
+		/// Удалить данные коллекцию данных
+		/// </summary>
+		/// <param name="beginIndex">Индекс с которого начать удаление включительно</param>
+		/// <param name="endIndex">Индекс до которого необходимо удалять включительно</param>
+		private void RemoveRange(int beginIndex, int endIndex)
+		{
+			ranges.RemoveRange(beginIndex, endIndex - beginIndex + 1);
 		}
 
 		/// <summary>
@@ -191,32 +238,98 @@ namespace Track.Relation.Tracks
 		/// </summary>
 		/// <param name="key">Идентификатор фиксации</param>
 		/// <returns>Индекс найденого элемента, -1 если ключ меньше первого элемента, range.Count если ключ больше последнего элемента</returns>
-		private int FindIndex(TKey key)
+		private Position FindIndex(TKey key)
 		{
 			if (ranges.Any())
 			{
 				if (ranges.First().CompareTo(key) < 0)
 				{
-					return -1;
+					return Position.Before;
 				}
 				else if (ranges.Last().CompareTo(key) > 0)
 				{
-					return ranges.Count;
+					return Position.After;
 				}
 				else
 				{
 					for (int i = 0; i < ranges.Count; i++)
 					{
 						var range = ranges[i];
-						if (range.Contains(key))
+						var compare = range.CompareTo(key);
+						if (compare == 0)
 						{
-							return i;
+							return Position.AsIndex(i);
+						}
+						else if (compare < 0)
+						{
+							return Position.Skip(i - 1);
 						}
 					}
 					throw new InvalidOperationException();
 				}
 			}
-			return -1;
+			return Position.None;
+		}
+
+		/// <summary>
+		/// Состьояние позиции поиска
+		/// </summary>
+		private enum PositionState
+		{
+			/// <summary>
+			/// Не удплось определить позицию
+			/// </summary>
+			None,
+			/// <summary>
+			/// Позиция находится до первого индекса отслеживаемых данных
+			/// </summary>
+			Before,
+			/// <summary>
+			/// Позиция находится после последнего индекса отслеживаемых данных
+			/// </summary>
+			After,
+			/// <summary>
+			/// Позиция находится в промежутке между двумя точками отслеживания
+			/// </summary>
+			Skip,
+			/// <summary>
+			/// Позицея находится в индексе списка отслеживания данных
+			/// </summary>
+			Index,
+		}
+		/// <summary>
+		/// Позиция поиска
+		/// </summary>
+		private struct Position
+		{
+			public static Position None { get; } = new Position(PositionState.None, default);
+			public static Position Before { get; } = new Position(PositionState.Before, default);
+			public static Position After { get; } = new Position(PositionState.After, default);
+			public static Position Skip(int prevIndex) => new Position(PositionState.Skip, prevIndex);
+			public static Position AsIndex(int index) => new Position(PositionState.Index, index);
+
+			private Position(PositionState state, int index)
+			{
+				State = state;
+				Index = index >= 0 ? index : throw new IndexOutOfRangeException();
+			}
+
+			/// <summary>
+			/// Состояние позиции
+			/// </summary>
+			public PositionState State { get; }
+			/// <summary>
+			/// Значение индекса данных, актуален при <see cref="State"/> равном <see cref="PositionState.Skip"/> или <see cref="PositionState.Index"/>
+			/// </summary>
+			public int Index { get; }
+			/// <summary>
+			/// Предшествующий индекс, актуален при <see cref="State"/> равном <see cref="PositionState.Skip"/>
+			/// </summary>
+			public int PrevIndex => Index;
+			/// <summary>
+			/// Следующий индекс, актуален при <see cref="State"/> равном <see cref="PositionState.Skip"/>
+			/// </summary>
+			public int NextIndex => Index + 1;
 		}
 	}
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Xml.Serialization;
@@ -39,6 +40,16 @@ namespace Track.Relation.Test.Tracks
 			{
 				return new Track<TKey, TValue>(value, transaction);
 			}
+		}
+		private static Track<TKey, TValue> CreateTrack<TKey, TValue>(IEnumerable<TValue> values, ICommitKeyProvider<TKey> commitKeyProvider)
+		{
+			var track = new Track<TKey, TValue>();
+			foreach (var value in values)
+			{
+				using var transaction = new Transaction<TKey>(commitKeyProvider);
+				track.SetValue(value, transaction);
+			}
+			return track;
 		}
 
 		[Fact]
@@ -239,35 +250,92 @@ namespace Track.Relation.Test.Tracks
 
 		[Theory]
 		[MemberData(nameof(InitTrack))]
-		public void Clear_All_CommitsEmpty<T>(HashSet<T> values)
+		public void Clear_All_CommitsEmpty<T>(IEnumerable<T> values)
 		{
-			var commitKeyProvider = new CommitKeyProvider();
-			var track = new Track<int?, T>();
-			foreach (var value in values)
-			{
-				using var transaction = new Transaction<int?>(commitKeyProvider);
-				track.SetValue(value, transaction);
-			}
+			var track = CreateTrack(values, new CommitKeyProvider());
 			track.Clear(default, default);
 			Assert.Empty(track.Commits);
 		}
 		[Theory]
 		[MemberData(nameof(InitTrack))]
-		public void Clear_FirstHalf_SecondHalf<T>(HashSet<T> values)
+		public void Clear_FirstHalf_SecondHalf<T>(IEnumerable<T> values)
 		{
-			var commitKeyProvider = new CommitKeyProvider();
-			var track = new Track<int?, T>();
-			foreach (var value in values)
-			{
-				using var transaction = new Transaction<int?>(commitKeyProvider);
-				track.SetValue(value, transaction);
-			}
+			var track = CreateTrack(values, new CommitKeyProvider());
 			var halfIndex = track.Commits.Count() / 2;
 			var halfKey = track.Commits.ElementAtOrDefault(halfIndex)?.Key;
-			var secondHalf = track.Commits.Skip(halfIndex).ToArray();
-			track.Clear(null, halfKey);
+			var expected = track.Commits.Skip(halfIndex + 1).ToArray();
+			track.Clear(default, halfKey);
 
-			Assert.Equal(track.Commits, secondHalf);
+			Assert.Equal(track.Commits, expected);
+		}
+		[Theory]
+		[MemberData(nameof(InitTrack))]
+		public void Clear_SecondHalf_FirstHalf<T>(IEnumerable<T> values)
+		{
+			var track = CreateTrack(values, new CommitKeyProvider());
+			var halfIndex = track.Commits.Count() / 2;
+			var halfKey = track.Commits.ElementAtOrDefault(halfIndex)?.Key;
+			var expected = track.Commits.Take(halfIndex).ToArray();
+			track.Clear(halfKey, default);
+
+			Assert.Equal(track.Commits, expected);
+		}
+		[Theory]
+		[MemberData(nameof(InitTrack))]
+		public void Clear_Center_WithoutCenter<T>(IEnumerable<T> values)
+		{
+			var track = CreateTrack(values, new CommitKeyProvider());
+			var beginIndex = track.Commits.Count() / 3;
+			var endIndex = beginIndex * 2;
+			var expected = track.Commits.Take(beginIndex).Concat(track.Commits.Skip(endIndex + 1)).ToArray();
+			var beginKey = track.Commits.ElementAtOrDefault(beginIndex)?.Key;
+			var endKey = track.Commits.ElementAtOrDefault(endIndex)?.Key;
+			track.Clear(beginKey, endKey);
+
+			Assert.Equal(expected, track.Commits, CommitEqualityComparer<int?, T>.Instance);
+		}
+		[Theory]
+		[MemberData(nameof(InitTrack))]
+		public void Clear_SingleCenter_WithoutSingleCenter<T>(IEnumerable<T> values)
+		{
+			var track = CreateTrack(values, new CommitKeyProvider());
+			var halfIndex = track.Commits.Count() / 2;
+			var expected = track.Commits.Take(halfIndex).Concat(track.Commits.Skip(halfIndex + 1)).ToArray();
+			var centerKey = track.Commits.ElementAtOrDefault(halfIndex)?.Key;
+			track.Clear(centerKey, centerKey);
+
+			Assert.Equal(expected, track.Commits, CommitEqualityComparer<int?, T>.Instance);
+		}
+
+		private class CommitEqualityComparer<TKey, TValue> : IEqualityComparer<ICommit<TKey, TValue>>
+		{
+			public static CommitEqualityComparer<TKey, TValue> Instance { get; } = new CommitEqualityComparer<TKey, TValue>();
+
+			private CommitEqualityComparer()
+			{
+
+			}
+
+			public bool Equals([AllowNull] ICommit<TKey, TValue> x, [AllowNull] ICommit<TKey, TValue> y)
+			{
+				if (ReferenceEquals(x, y))
+				{
+					return true;
+				}
+				else if (x is null || y is null)
+				{
+					return false;
+				}
+				else
+				{
+					return EqualityComparer<TKey>.Default.Equals(x.Key, y.Key) && EqualityComparer<TValue>.Default.Equals(x.Value, y.Value);
+				}
+			}
+
+			public int GetHashCode([DisallowNull] ICommit<TKey, TValue> obj)
+			{
+				return HashCode.Combine(obj.Key, obj.Value);
+			}
 		}
 	}
 }
