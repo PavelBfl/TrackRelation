@@ -160,5 +160,9 @@ namespace Track.Relation.Transact
 			ListObserver.Offset(key);
 			Indiсes.Clear();
 		}
+		public override void Clear(TKey begin, TKey end)
+		{
+			ListObserver.Clear(begin, end);
+		}
 	}
 }

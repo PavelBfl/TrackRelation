@@ -96,5 +96,9 @@ namespace Track.Relation.Transact
 				Track.SetValue(Value, transaction); 
 			}
 		}
+		public override void Clear(TKey begin, TKey end)
+		{
+			Track.Clear(begin, end);
+		}
 	}
 }

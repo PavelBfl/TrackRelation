@@ -307,6 +307,19 @@ namespace Track.Relation.Test.Tracks
 			Assert.Equal(expected, track.Commits, CommitEqualityComparer<int?, T>.Instance);
 		}
 
+		[Theory]
+		[InlineData(null, null)]
+		[InlineData(0, null)]
+		[InlineData(null, 0)]
+		[InlineData(0, 0)]
+		[InlineData(0, 1)]
+		public void Clear_Empty_CommitsEmpty(int? begin, int? end)
+		{
+			var track = new Track<int?, object>();
+			track.Clear(begin, end);
+			Assert.Empty(track.Commits);
+		}
+
 		private class CommitEqualityComparer<TKey, TValue> : IEqualityComparer<ICommit<TKey, TValue>>
 		{
 			public static CommitEqualityComparer<TKey, TValue> Instance { get; } = new CommitEqualityComparer<TKey, TValue>();

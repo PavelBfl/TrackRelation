@@ -47,5 +47,9 @@ namespace Track.Relation.Transact
 				ValueAccess.SetValue(result);
 			}
 		}
+		public override void Clear(TKey begin, TKey end)
+		{
+			Track.Clear(begin, end);
+		}
 	}
 }

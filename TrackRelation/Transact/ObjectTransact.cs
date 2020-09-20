@@ -34,5 +34,11 @@ namespace Track.Relation.Transact
 		/// </summary>
 		/// <param name="key">Ключ ревизии</param>
 		public abstract void Offset(TKey key);
+		/// <summary>
+		/// Удалить сохранёные данные
+		/// </summary>
+		/// <param name="begin">Ключ с которого необходимо начать удалять данные</param>
+		/// <param name="end">Ключ до которого необходимо удалять данные</param>
+		public abstract void Clear(TKey begin, TKey end);
 	}
 }

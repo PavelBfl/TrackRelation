@@ -124,5 +124,17 @@ namespace Track.Relation.Tracks
 				}
 			}
 		}
+		/// <summary>
+		/// Отчистить данные
+		/// </summary>
+		/// <param name="begin">Ключ фиксации с которого начинается отчистка</param>
+		/// <param name="end">Ключ фиксации до которого производится отчистка</param>
+		public void Clear(TCommitKey begin, TCommitKey end)
+		{
+			foreach (var itemTrack in Track.Values)
+			{
+				itemTrack.Clear(begin, end);
+			}
+		}
 	}
 }

@@ -137,5 +137,9 @@ namespace Track.Relation.Transact
 			DictionaryObserver.Offset(key);
 			Indices.Clear();
 		}
+		public override void Clear(TCommitKey begin, TCommitKey end)
+		{
+			DictionaryObserver.Clear(begin, end);
+		}
 	}
 }

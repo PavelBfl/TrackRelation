@@ -57,5 +57,10 @@ namespace Track.Relation.Transact
 		{
 			Track.Revert(List);
 		}
+
+		public override void Clear(TKey begin, TKey end)
+		{
+			Track.Clear(begin, end);
+		}
 	}
 }

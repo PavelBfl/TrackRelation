@@ -56,5 +56,10 @@ namespace Track.Relation.Transact
 		{
 			Track.Revert(Dictionary);
 		}
+
+		public override void Clear(TCommitKey begin, TCommitKey end)
+		{
+			Track.Clear(begin, end);
+		}
 	}
 }

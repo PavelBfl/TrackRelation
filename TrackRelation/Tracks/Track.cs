@@ -13,6 +13,12 @@ namespace Track.Relation.Tracks
 	/// <typeparam name="TValue">Тип отслеживаемого значения</typeparam>
 	public class Track<TKey, TValue>
 	{
+		private const string BEGIN_OVER_END_MESSAGE = "Ключ начала больше ключа завершения поиска";
+		private const string INVALID_FIND_MESSAGE = "Сбой поиска данных";
+		private const string UNKNOWN_POSITION_MESSAGE = "Неизвестное значение позиции поиска";
+		private const string POSITION_BEGIN_OVER_END_MESSAGE = "Позиция начала отчистки больше позиции завершения";
+		private const string INVALID_FIND_POSITION_MESSAGE = "Не удалось определить позицию ключа на шкале отслеживания";
+
 		public Track()
 			: this(null)
 		{
@@ -37,6 +43,7 @@ namespace Track.Relation.Tracks
 		/// Список диапазонов изменения значений
 		/// </summary>
 		public IEnumerable<ICommit<TKey, TValue>> Commits => ranges.Cast<ICommit<TKey, TValue>>();
+
 		private readonly List<RangeTrack<TKey, TValue>> ranges = new List<RangeTrack<TKey, TValue>>();
 		/// <summary>
 		/// Объект сравнения значений
@@ -105,8 +112,8 @@ namespace Track.Relation.Tracks
 				throw new InvalidOperationException();
 			}
 
-			var position = FindIndex(key);
-			if (position.State == PositionState.Index)
+			var position = FindPosition(key);
+			if (position.State == PositionState.Begin || position.State == PositionState.Range)
 			{
 				result = ranges[position.Index].Value;
 				return true;
@@ -155,45 +162,49 @@ namespace Track.Relation.Tracks
 		/// <param name="end">Ключ фиксации до которого удаляются данные, если значение является default то отчистка производится до конца</param>
 		public void Clear(TKey begin, TKey end)
 		{
-			var beginComparable = new Comparable<TKey>(begin);
-			var endComparable = new Comparable<TKey>(end);
+			var beginComparable = begin.AsComparable();
+			var endComparable = end.AsComparable();
 			if (!beginComparable.IsDefault() && !endComparable.IsDefault() && beginComparable > endComparable)
 			{
-				throw new InvalidOperationException();
+				throw new TrackRelationOperationException(BEGIN_OVER_END_MESSAGE);
 			}
 
-			var beginPosition = beginComparable.IsDefault() ? Position.Before : FindIndex(begin);
-			var endPosition = endComparable.IsDefault() ? Position.After : FindIndex(end);
+			var beginPosition = beginComparable.IsDefault() && ranges.Any() ? Position.Before : FindPosition(begin);
+			var endPosition = endComparable.IsDefault() && ranges.Any() ? Position.After : FindPosition(end);
 
 			switch (beginPosition.State)
 			{
 				case PositionState.None:
 					if (endPosition.State != PositionState.None)
 					{
-						throw new InvalidOperationException();
+						throw new TrackRelationOperationException(INVALID_FIND_MESSAGE);
 					}
 					break;
 				case PositionState.Before:
 					switch (endPosition.State)
 					{
 						case PositionState.Before:
+							// Оба индекса находятся до начала истории отслеживания, отчистку производить не требуется
 							break;
 						case PositionState.After:
 							ranges.Clear();
 							break;
 						case PositionState.Skip:
-						case PositionState.Index:
+						case PositionState.Begin:
+						case PositionState.Range:
 							RemoveRange(0, endPosition.Index);
 							break;
-						default: throw new InvalidOperationException();
+						case PositionState.None: throw new TrackRelationOperationException(INVALID_FIND_MESSAGE);
+						default: throw new TrackRelationOperationException(UNKNOWN_POSITION_MESSAGE);
 					}
 					break;
 				case PositionState.After:
 					if (endPosition.State != PositionState.After)
 					{
-						throw new InvalidOperationException();
+						throw new TrackRelationOperationException(POSITION_BEGIN_OVER_END_MESSAGE);
 					}
 					break;
+				case PositionState.Range:
 				case PositionState.Skip:
 					switch (endPosition.State)
 					{
@@ -201,26 +212,32 @@ namespace Track.Relation.Tracks
 							RemoveRange(beginPosition.NextIndex, ranges.Count - 1);
 							break;
 						case PositionState.Skip:
-						case PositionState.Index:
+						case PositionState.Begin:
+						case PositionState.Range:
 							RemoveRange(beginPosition.NextIndex, endPosition.Index);
 							break;
-						default: throw new InvalidOperationException();
+						case PositionState.Before: throw new TrackRelationOperationException(POSITION_BEGIN_OVER_END_MESSAGE);
+						case PositionState.None: throw new TrackRelationOperationException(INVALID_FIND_MESSAGE);
+						default: throw new TrackRelationOperationException(UNKNOWN_POSITION_MESSAGE);
 					}
 					break;
-				case PositionState.Index:
+				case PositionState.Begin:
 					switch (endPosition.State)
 					{
 						case PositionState.After:
 							RemoveRange(beginPosition.Index, ranges.Count - 1);
 							break;
 						case PositionState.Skip:
-						case PositionState.Index:
+						case PositionState.Begin:
+						case PositionState.Range:
 							RemoveRange(beginPosition.Index, endPosition.Index);
 							break;
-						default: throw new InvalidOperationException();
+						case PositionState.Before: throw new TrackRelationOperationException(POSITION_BEGIN_OVER_END_MESSAGE);
+						case PositionState.None: throw new TrackRelationOperationException(INVALID_FIND_MESSAGE);
+						default: throw new TrackRelationOperationException(UNKNOWN_POSITION_MESSAGE);
 					}
 					break;
-				default: throw new InvalidOperationException();
+				default: throw new TrackRelationOperationException(UNKNOWN_POSITION_MESSAGE);
 			}
 		}
 		/// <summary>
@@ -238,15 +255,16 @@ namespace Track.Relation.Tracks
 		/// </summary>
 		/// <param name="key">Идентификатор фиксации</param>
 		/// <returns>Индекс найденого элемента, -1 если ключ меньше первого элемента, range.Count если ключ больше последнего элемента</returns>
-		private Position FindIndex(TKey key)
+		private Position FindPosition(TKey key)
 		{
 			if (ranges.Any())
 			{
-				if (ranges.First().CompareTo(key) < 0)
+				var keyComparable = key.AsComparable();
+				if (keyComparable < ranges.First().Begin.AsComparable())
 				{
 					return Position.Before;
 				}
-				else if (ranges.Last().CompareTo(key) > 0)
+				else if (ranges.Last().Begin.AsComparable() < keyComparable)
 				{
 					return Position.After;
 				}
@@ -258,14 +276,21 @@ namespace Track.Relation.Tracks
 						var compare = range.CompareTo(key);
 						if (compare == 0)
 						{
-							return Position.AsIndex(i);
+							if (keyComparable == range.Begin.AsComparable())
+							{
+								return Position.Begin(i);
+							}
+							else
+							{
+								return Position.Range(i);
+							}
 						}
 						else if (compare < 0)
 						{
 							return Position.Skip(i - 1);
 						}
 					}
-					throw new InvalidOperationException();
+					throw new TrackRelationOperationException(INVALID_FIND_POSITION_MESSAGE);
 				}
 			}
 			return Position.None;
@@ -295,7 +320,11 @@ namespace Track.Relation.Tracks
 			/// <summary>
 			/// Позицея находится в индексе списка отслеживания данных
 			/// </summary>
-			Index,
+			Range,
+			/// <summary>
+			/// Позиция находится в начале времени значения
+			/// </summary>
+			Begin,
 		}
 		/// <summary>
 		/// Позиция поиска
@@ -306,7 +335,8 @@ namespace Track.Relation.Tracks
 			public static Position Before { get; } = new Position(PositionState.Before, default);
 			public static Position After { get; } = new Position(PositionState.After, default);
 			public static Position Skip(int prevIndex) => new Position(PositionState.Skip, prevIndex);
-			public static Position AsIndex(int index) => new Position(PositionState.Index, index);
+			public static Position Range(int index) => new Position(PositionState.Range, index);
+			public static Position Begin(int index) => new Position(PositionState.Begin, index);
 
 			private Position(PositionState state, int index)
 			{
