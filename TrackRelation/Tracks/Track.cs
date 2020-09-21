@@ -264,7 +264,7 @@ namespace Track.Relation.Tracks
 				{
 					return Position.Before;
 				}
-				else if (ranges.Last().Begin.AsComparable() < keyComparable)
+				else if (ranges.Last().CompareTo(key) > 0)
 				{
 					return Position.After;
 				}

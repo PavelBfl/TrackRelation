@@ -209,7 +209,7 @@ namespace Track.Relation.Test.Tracks
 		{
 			var commitKeyProvider = new CommitKeyProvider();
 			var track = CreateTrack(value, commitKeyProvider);
-			
+
 			using (var transaction = new Transaction<int?>(commitKeyProvider))
 			{
 				track.Close(transaction);
@@ -245,7 +245,7 @@ namespace Track.Relation.Test.Tracks
 		public void TryGetValue_DefaultKey_InvalidOperationException()
 		{
 			var track = new Track<object, object>();
-			Assert.Throws<InvalidOperationException>(() => track.TryGetValue(null, out var _));
+			Assert.Throws<InvalidOperationException>(() => track.TryGetValue(default, out var _));
 		}
 
 		[Theory]
@@ -318,6 +318,12 @@ namespace Track.Relation.Test.Tracks
 			var track = new Track<int?, object>();
 			track.Clear(begin, end);
 			Assert.Empty(track.Commits);
+		}
+		[Fact]
+		public void Clear_BeginOverEnd_TrackRelationOperationException()
+		{
+			var track = CreateTrack(new[] { 0, 1, 2, 3, 4, 5 }, new CommitKeyProvider());
+			Assert.Throws<TrackRelationOperationException>(() => track.Clear(1, 0));
 		}
 
 		private class CommitEqualityComparer<TKey, TValue> : IEqualityComparer<ICommit<TKey, TValue>>
