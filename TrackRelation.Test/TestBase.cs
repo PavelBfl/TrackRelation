@@ -11,8 +11,12 @@ namespace Track.Relation.Test
 		[Fact]
 		public void Test()
 		{
-			var array = new[] { 1, 19 };
-			var result = TrackExtension.BinsrySearch(array, 10, x => x, Comparer<int>.Default);
+			SortedList<int, string> l = new SortedList<int, string>();
+
+			l.Add(1, "");
+			l.Add(10, "");
+
+			var index = l.IndexOfKey(5);
 		}
 	}
 }

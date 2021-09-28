@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace Track.Relation
 {
@@ -51,6 +53,46 @@ namespace Track.Relation
 			{
 				return -1;
 			}
+		}
+
+		public static int IndexOfKeyTrack<TKey, TValue>(this SortedList<TKey, TValue> list, TKey key)
+			=> BinsrySearch(new ReadOnlyCollection<TKey>(list.Keys), key, x => x, list.Comparer);
+		public static bool TryGetValueTrack<TKey, TValue>(this SortedList<TKey, TValue> list, TKey key, out TValue result)
+		{
+			var index = list.IndexOfKeyTrack(key);
+			if (index >= 0)
+			{
+				result = list.Values[index];
+				return true;
+			}
+			else
+			{
+				result = default;
+				return false;
+			}
+		}
+		public static TValue GetValueTrack<TKey, TValue>(this SortedList<TKey, TValue> list, TKey key)
+		{
+			var index = list.IndexOfKeyTrack(key);
+			return list.Values[index];
+		}
+
+
+		public static void CloseTrackRagged<TKey, TValue>(this SortedList<TKey, SortedList<TKey, TValue>> list, TKey key)
+		{
+			if (list.Any() && !(list.Values.Last() is null))
+			{
+				list.Add(key, null);
+			}
+		}
+		public static void AddTrackRagged<TKey, TValue>(this SortedList<TKey, SortedList<TKey, TValue>> list, TKey key, TValue value)
+		{
+			var subTrack = list.Values.LastOrDefault();
+			if (subTrack is null)
+			{
+				subTrack = new SortedList<TKey, TValue>(list.Comparer);
+			}
+			subTrack.Add(key, value);
 		}
 	}
 }

@@ -6,20 +6,16 @@ namespace Track.Relation.Tracks
 {
 	public class ArrayTrack<TKey, TValue>
 	{
-		public ArrayTrack(int size, IParameters<TKey, TValue> parameters)
+		public ArrayTrack(int size, IComparer<TKey> comparer)
 		{
-			Parameters = parameters ?? new Parameters<TKey, TValue>();
-
-			Tracks = new Track<TKey, TValue>[size];
+			Tracks = new SortedList<TKey, TValue>[size];
 			for (int i = 0; i < Tracks.Length; i++)
 			{
-				Tracks[i] = new Track<TKey, TValue>(Parameters);
+				Tracks[i] = new SortedList<TKey, TValue>(comparer);
 			}
 		}
 
-		public IParameters<TKey, TValue> Parameters { get; }
-
-		private Track<TKey, TValue>[] Tracks { get; }
+		private SortedList<TKey, TValue>[] Tracks { get; }
 
 		public void Add(TKey key, IReadOnlyList<TValue> items)
 		{
@@ -30,7 +26,7 @@ namespace Track.Relation.Tracks
 
 			for (int i = 0; i < Tracks.Length; i++)
 			{
-				Tracks[i].SetValue(key, items[i]);
+				Tracks[i].Add(key, items[i]);
 			}
 		}
 		public bool TryGetValue(TKey key, out TValue[] result)
@@ -38,7 +34,7 @@ namespace Track.Relation.Tracks
 			result = new TValue[Tracks.Length];
 			for (int i = 0; i < Tracks.Length; i++)
 			{
-				if (Tracks[i].TryGetValue(key, out var item))
+				if (Tracks[i].TryGetValueTrack(key, out var item))
 				{
 					result[i] = item;
 				}

@@ -13,17 +13,17 @@ namespace Track.Relation
 	/// <typeparam name="TValue">Тип значения словаря</typeparam>
 	public class DictionaryTrack<TCommitKey, TKey, TValue>
 	{
-		public DictionaryTrack(IEqualityComparer<TKey> keyComparer, IParameters<TCommitKey, TValue> parameters)
+		public DictionaryTrack(IEqualityComparer<TKey> keyComparer, IComparer<TCommitKey> comparer)
 		{
-			Tracks = new Dictionary<TKey, TrackRagged<TCommitKey, TValue>>(keyComparer);
-			Parameters = parameters;
+			Comparer = comparer;
+			Tracks = new Dictionary<TKey, SortedList<TCommitKey, SortedList<TCommitKey, TValue>>>(keyComparer);
 		}
 
+		public IComparer<TCommitKey> Comparer { get; }
 		/// <summary>
 		/// Базовый трекер
 		/// </summary>
-		private Dictionary<TKey, TrackRagged<TCommitKey, TValue>> Tracks { get; }
-		public IParameters<TCommitKey, TValue> Parameters { get; }
+		private Dictionary<TKey, SortedList<TCommitKey, SortedList<TCommitKey, TValue>>> Tracks { get; }
 
 		/// <summary>
 		/// Зафиксировать данные
@@ -39,19 +39,19 @@ namespace Track.Relation
 				{
 					if (dictionary.TryGetValue(valueKey, out var value))
 					{
-						track.Add(key, value);
+						track.AddTrackRagged(key, value);
 					}
 					else
 					{
-						track.Close(key);
+						track.CloseTrackRagged(key);
 					}
 				}
 				else
 				{
 					if (dictionary.TryGetValue(valueKey, out var value))
 					{
-						var newTrack = new TrackRagged<TCommitKey, TValue>(Parameters);
-						newTrack.Add(key, value);
+						var newTrack = new SortedList<TCommitKey, SortedList<TCommitKey, TValue>>(Comparer);
+						newTrack.AddTrackRagged(key, value);
 						Tracks.Add(valueKey, newTrack);
 					}
 					else
