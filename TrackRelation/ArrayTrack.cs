@@ -46,5 +46,13 @@ namespace Track.Relation.Tracks
 			}
 			return true;
 		}
+
+		public void Remove(TKey key)
+		{
+			foreach (var track in Tracks)
+			{
+				track.RemoveTrack(key);
+			}
+		}
 	}
 }

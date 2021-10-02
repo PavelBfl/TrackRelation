@@ -76,6 +76,44 @@ namespace Track.Relation
 			var index = list.IndexOfKeyTrack(key);
 			return list.Values[index];
 		}
+		public static bool AddTrack<TKey, TValue>(this SortedList<TKey, TValue> list, TKey key, TValue value, IEqualityComparer<TValue> comparer = null)
+		{
+			if (list.Any())
+			{
+				var lastKey = list.Keys.Last();
+				if (list.Comparer.Compare(key, lastKey) <= 0)
+				{
+					throw new InvalidOperationException();
+				}
+				var lastValue = list.Values.Last();
+				if (!(comparer ?? EqualityComparer<TValue>.Default).Equals(lastValue, value))
+				{
+					list.Add(key, value);
+					return true;
+				}
+				else
+				{
+					return false;
+				}
+			}
+			else
+			{
+				list.Add(key, value);
+				return true;
+			}
+		}
+		public static void RemoveTrack<TKey, TValue>(this SortedList<TKey, TValue> list, TKey key)
+		{
+			var index = list.IndexOfKeyTrack(key);
+			if (list.Comparer.Compare(key, list.Keys[index]) != 0)
+			{
+				index++;
+			}
+			for (int i = list.Count - 1; i >= index; i--)
+			{
+				list.RemoveAt(i);
+			}
+		}
 
 
 		public static void CloseTrackRagged<TKey, TValue>(this SortedList<TKey, SortedList<TKey, TValue>> list, TKey key)
@@ -93,6 +131,15 @@ namespace Track.Relation
 				subTrack = new SortedList<TKey, TValue>(list.Comparer);
 			}
 			subTrack.Add(key, value);
+		}
+		public static void RemoveTrackRagged<TKey, TValue>(this SortedList<TKey, SortedList<TKey, TValue>> list, TKey key)
+		{
+			list.RemoveTrack(key);
+			var subList = list.Values.LastOrDefault();
+			if (!(subList is null))
+			{
+				subList.RemoveTrack(key);
+			}
 		}
 	}
 }
