@@ -16,7 +16,8 @@ namespace Track.Relation.Test
 			l.Add(1, "");
 			l.Add(10, "");
 
-			var index = l.IndexOfKey(5);
+			var index = l.IndexOfKeyTrack(5);
+			Assert.Equal(0, index);
 		}
 	}
 }
